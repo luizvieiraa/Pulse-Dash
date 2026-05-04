@@ -2,6 +2,11 @@
 #include <math.h>
 #include <stddef.h>
 
+static float InterpolarFloat(float atual, float alvo, float fator)
+{
+    return atual + (alvo - atual) * fator;
+}
+
 static Vector2 RotacionarPontoAoRedorDoCentro(Vector2 ponto, Vector2 centro, float rotacaoGraus)
 {
     float rotacaoRadianos = rotacaoGraus * DEG2RAD;
@@ -221,6 +226,26 @@ void ReiniciarJogador(Jogador *jogador, float inicioX, float chaoY)
     jogador->estavaNoChao = true;
     jogador->tempoAnimacaoCorrida = 0.0f;
     jogador->rotacaoGraus = 0.0f;
+}
+
+void AtualizarJogadorEntrandoNaPorta(Jogador *jogador, Rectangle portaSaida, float tempoFrame)
+{
+    if (jogador == NULL)
+    {
+        return;
+    }
+
+    float fatorInterpolacao = fminf(1.0f, tempoFrame * 5.5f);
+    float alvoX = portaSaida.x + portaSaida.width * 0.5f - jogador->limites.width * 0.5f;
+    float alvoY = portaSaida.y + portaSaida.height - jogador->limites.height - 10.0f;
+
+    jogador->limites.x = InterpolarFloat(jogador->limites.x, alvoX, fatorInterpolacao);
+    jogador->limites.y = InterpolarFloat(jogador->limites.y, alvoY, fatorInterpolacao);
+    jogador->velocidadeY = 0.0f;
+    jogador->estaNoChao = true;
+    jogador->estavaNoChao = true;
+    jogador->tempoAnimacaoCorrida += tempoFrame * 3.0f;
+    jogador->rotacaoGraus = InterpolarFloat(jogador->rotacaoGraus, 0.0f, fminf(1.0f, tempoFrame * 8.0f));
 }
 
 bool JogadorAcabouDePousar(const Jogador *jogador)

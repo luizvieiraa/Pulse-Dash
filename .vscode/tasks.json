@@ -3,34 +3,41 @@
     "tasks": [
         {
             "label": "Build Pulse Dash",
-            "type": "process",
-            "command": "C:\\Users\\luizv\\AppData\\Roaming\\Code\\User\\raylib-gcc.cmd",
+            "type": "shell",
+            "command": "gcc",
             "args": [
                 "-std=c99",
                 "-Wall",
                 "-Wextra",
                 "-Wpedantic",
                 "-I",
-                "C:\\raylib\\w64devkit\\x86_64-w64-mingw32\\include",
+                "${workspaceFolder}\\.H",
                 "-I",
-                ".H",
-                ".C\\pulse_dash.c",
+                "C:\\raylib\\w64devkit\\include",
+                "${workspaceFolder}\\.C\\pulse_dash.c",
                 "-o",
-                "pulse_dash_wrapper.exe",
+                "${workspaceFolder}\\.C\\output\\pulse_dash.exe",
                 "-L",
-                "C:\\raylib\\w64devkit\\x86_64-w64-mingw32\\lib",
+                "C:\\raylib\\w64devkit\\lib",
                 "-lraylib",
                 "-lopengl32",
                 "-lgdi32",
                 "-lwinmm",
                 "-lm"
             ],
-            "options": { "cwd": "${workspaceFolder}" },
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "C:\\raylib\\w64devkit\\bin;${env:PATH}"
+                }
+            },
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": ["$gcc"]
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }
