@@ -146,6 +146,49 @@ int AtualizarMenuPausa(int *opcaoSelecionada)
     return -1; // Nenhuma acao
 }
 
+static void DesenharEspinhosCustomizados(const DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY, EstiloCena estilo)
+{
+    if (espinhos == NULL || quantidadeEspinhos <= 0)
+    {
+        return;
+    }
+
+    for (int i = 0; i < quantidadeEspinhos; i++)
+    {
+        float largura = 34.0f;
+        float altura = 42.0f + espinhos[i].variacaoAltura;
+        float baseX = espinhos[i].posicaoX;
+
+        Vector2 pontoEsquerdo = { baseX, chaoY };
+        Vector2 pontoTopo = { baseX + largura * 0.5f, chaoY - altura };
+        Vector2 pontoDireito = { baseX + largura, chaoY };
+
+        DrawTriangle(pontoEsquerdo, pontoTopo, pontoDireito, Fade(estilo.azulNeon, 0.18f));
+        DrawTriangleLines(pontoEsquerdo, pontoTopo, pontoDireito, Fade(estilo.azulNeon, 0.92f));
+        DrawLineEx(pontoEsquerdo, pontoTopo, 2.0f, Fade((Color){ 190, 240, 255, 255 }, 0.90f));
+        DrawLineEx(pontoTopo, pontoDireito, 2.0f, Fade((Color){ 190, 240, 255, 255 }, 0.90f));
+    }
+}
+
+static void DesenharMensagemConclusaoFase(int larguraTela, int alturaTela, EstiloCena estilo)
+{
+    const char *titulo = "FASE CONCLUIDA";
+    const char *subtitulo = "O CUBO ENTROU NA PORTA";
+    int larguraTitulo = MeasureText(titulo, 44);
+    int larguraSubtitulo = MeasureText(subtitulo, 20);
+
+    DrawRectangleRounded(
+        (Rectangle){ larguraTela * 0.5f - 250.0f, alturaTela * 0.5f - 82.0f, 500.0f, 132.0f },
+        0.12f,
+        10,
+        Fade((Color){ 4, 8, 22, 255 }, 0.82f)
+    );
+    DrawText(titulo, larguraTela / 2 - larguraTitulo / 2 + 4, alturaTela / 2 - 26, 44, Fade(BLACK, 0.50f));
+    DrawText(titulo, larguraTela / 2 - larguraTitulo / 2, alturaTela / 2 - 30, 44, Fade((Color){ 120, 235, 255, 255 }, 0.98f));
+    DrawText(subtitulo, larguraTela / 2 - larguraSubtitulo / 2 + 3, alturaTela / 2 + 28, 20, Fade(BLACK, 0.45f));
+    DrawText(subtitulo, larguraTela / 2 - larguraSubtitulo / 2, alturaTela / 2 + 24, 20, Fade(estilo.azulNeon, 0.92f));
+}
+
 // Versao do LoopJogo que suporta fases customizadas.
 void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float alturaChao, 
                      float chaoY, float larguraJogador, float alturaJogador, int larguraFrameSprite, 
@@ -153,6 +196,9 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
                      float gravidade, float forcaPulo, float larguraBlocoChao, float inicioJogadorX,
                      DadosEspinho *espinhosCustomizados, int quantidadeEspinhosCustomizados)
 {
+    Rectangle portaSaida = CriarPortaSaidaFase(espinhosCustomizados, quantidadeEspinhosCustomizados, chaoY);
+    float limiteDireitoUltimoEspinho = ObterLimiteDireitoUltimoEspinho(espinhosCustomizados, quantidadeEspinhosCustomizados);
+
     // Armazena todas as particulas dos efeitos de corrida e pouso.
     ParticulaPoeira particulasPoeira[MAX_PARTICULAS_POEIRA] = { 0 };
 
@@ -168,9 +214,16 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
     // Evita colisao repetida logo apos o respawn do personagem.
     float temporizadorProtecaoRespawn = 0.0f;
 
+    // Marca quando a saida pode ser usada e quando a fase esta encerrando.
+    bool portaLiberada = false;
+    bool faseConcluida = false;
+    float temporizadorConclusaoFase = 0.0f;
+    float progressoFase = 0.0f;
+    float tempoAnimacaoPorta = 0.0f;
+
     // Cria o personagem principal com sprite, fisica e animacao.
     Jogador jogador = CriarJogador(
-        120.0f,
+        inicioJogadorX,
         chaoY,
         larguraJogador,
         alturaJogador,
@@ -220,68 +273,100 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
         }
         else
         {
-        // Trata a pausa com a tecla P (apenas quando nao estiver em pausa).
-        if (IsKeyPressed(KEY_P))
-        {
-            emPausa = true;
-            opcaoPausa = 0; // Reseta a selecao do menu de pausa.
-        }
+            // Trata a pausa com a tecla P apenas enquanto a fase ainda nao acabou.
+            if (!faseConcluida && IsKeyPressed(KEY_P))
+            {
+                emPausa = true;
+                opcaoPausa = 0;
+            }
 
-        // Calcula o tempo do frame atual para o movimento ficar suave.
-        float tempoFrame = GetFrameTime();
+            // Calcula o tempo do frame atual para o movimento ficar suave.
+            float tempoFrame = GetFrameTime();
+            tempoAnimacaoPorta += tempoFrame;
 
-        // Atualiza o tempo restante do flash de dano e da protecao de respawn.
-        temporizadorFlashDano = fmaxf(0.0f, temporizadorFlashDano - tempoFrame);
-        temporizadorProtecaoRespawn = fmaxf(0.0f, temporizadorProtecaoRespawn - tempoFrame);
+            // Atualiza o tempo restante do flash de dano e da protecao de respawn.
+            temporizadorFlashDano = fmaxf(0.0f, temporizadorFlashDano - tempoFrame);
+            temporizadorProtecaoRespawn = fmaxf(0.0f, temporizadorProtecaoRespawn - tempoFrame);
 
-        // Atualiza o personagem com movimento automatico, pulo e gravidade.
-        AtualizarJogador(&jogador, tempoFrame, velocidadeJogador, gravidade, forcaPulo, chaoY);
+            if (faseConcluida)
+            {
+                temporizadorConclusaoFase = fmaxf(0.0f, temporizadorConclusaoFase - tempoFrame);
+                AtualizarJogadorEntrandoNaPorta(&jogador, portaSaida, tempoFrame);
+                AtualizarParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA, tempoFrame);
+                progressoFase = 1.0f;
 
-        // Cria o rastro de energia enquanto o personagem corre no chao.
-        if (jogador.estaNoChao)
-        {
-            CriarPoeiraCorrida(particulasPoeira, MAX_PARTICULAS_POEIRA, jogador.limites, tempoFrame, &temporizadorPoeiraCorrida);
-        }
-        else
-        {
-            // Zera o temporizador no ar para o rastro voltar bem sincronizado ao pousar.
-            temporizadorPoeiraCorrida = 0.0f;
-        }
+                if (temporizadorConclusaoFase <= 0.0f)
+                {
+                    voltarAoMenu = true;
+                }
+            }
+            else
+            {
+                // Atualiza o personagem com movimento automatico, pulo e gravidade.
+                AtualizarJogador(&jogador, tempoFrame, velocidadeJogador, gravidade, forcaPulo, chaoY);
 
-        // Dispara um efeito mais forte exatamente no frame do pouso.
-        if (JogadorAcabouDePousar(&jogador))
-        {
-            CriarPoeiraPouso(particulasPoeira, MAX_PARTICULAS_POEIRA, jogador.limites);
-        }
+                // Cria o rastro de energia enquanto o personagem corre no chao.
+                if (jogador.estaNoChao)
+                {
+                    CriarPoeiraCorrida(particulasPoeira, MAX_PARTICULAS_POEIRA, jogador.limites, tempoFrame, &temporizadorPoeiraCorrida);
+                }
+                else
+                {
+                    // Zera o temporizador no ar para o rastro voltar bem sincronizado ao pousar.
+                    temporizadorPoeiraCorrida = 0.0f;
+                }
 
-        // Testa colisao com os espinhos customizados da fase.
-        if (temporizadorProtecaoRespawn <= 0.0f && 
-            VerificarColisaoComEspinhos(jogador.limites, espinhosCustomizados, quantidadeEspinhosCustomizados, chaoY))
-        {
-            // Conta a colisao para facilitar os testes de gameplay.
-            contadorColisoes++;
+                // Dispara um efeito mais forte exatamente no frame do pouso.
+                if (JogadorAcabouDePousar(&jogador))
+                {
+                    CriarPoeiraPouso(particulasPoeira, MAX_PARTICULAS_POEIRA, jogador.limites);
+                }
 
-            // Ativa um aviso visual curto na interface.
-            temporizadorFlashDano = 0.65f;
+                // Testa colisao com os espinhos customizados da fase.
+                if (temporizadorProtecaoRespawn <= 0.0f &&
+                    VerificarColisaoComEspinhos(jogador.limites, espinhosCustomizados, quantidadeEspinhosCustomizados, chaoY))
+                {
+                    // Conta a colisao para facilitar os testes de gameplay.
+                    contadorColisoes++;
 
-            // Da um pequeno tempo de invulnerabilidade para evitar varias colisoes seguidas no mesmo frame.
-            temporizadorProtecaoRespawn = 0.80f;
+                    // Ativa um aviso visual curto na interface.
+                    temporizadorFlashDano = 0.65f;
 
-            // Limpa as particulas antigas para o respawn comecar visualmente limpo.
-            LimparParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA);
+                    // Da um pequeno tempo de invulnerabilidade para evitar varias colisoes seguidas no mesmo frame.
+                    temporizadorProtecaoRespawn = 0.80f;
 
-            // Zera o temporizador do rastro para ele voltar sincronizado apos o respawn.
-            temporizadorPoeiraCorrida = 0.0f;
+                    // Limpa as particulas antigas para o respawn comecar visualmente limpo.
+                    LimparParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA);
 
-            // Reposiciona o personagem no comeco da fase.
-            ReiniciarJogador(&jogador, inicioJogadorX, chaoY);
-        }
+                    // Zera o temporizador do rastro para ele voltar sincronizado apos o respawn.
+                    temporizadorPoeiraCorrida = 0.0f;
 
-        // Atualiza a simulacao das particulas depois da logica principal do frame.
-        AtualizarParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA, tempoFrame);
+                    // Reposiciona o personagem no comeco da fase.
+                    ReiniciarJogador(&jogador, inicioJogadorX, chaoY);
+                }
 
-        // Atualiza o alvo da camera para seguir o centro do personagem no eixo X.
-        camera.target = (Vector2){ jogador.limites.x + jogador.limites.width / 2.0f, alturaTela / 2.0f };
+                portaLiberada = (jogador.limites.x + jogador.limites.width) >= (limiteDireitoUltimoEspinho + 12.0f);
+                progressoFase = CalcularProgressoFase(
+                    jogador.limites.x + jogador.limites.width * 0.5f,
+                    inicioJogadorX,
+                    portaSaida
+                );
+
+                if (portaLiberada && VerificarJogadorEntrouNaPorta(jogador.limites, portaSaida))
+                {
+                    faseConcluida = true;
+                    temporizadorConclusaoFase = 1.05f;
+                    progressoFase = 1.0f;
+                    LimparParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA);
+                    temporizadorPoeiraCorrida = 0.0f;
+                }
+
+                // Atualiza a simulacao das particulas depois da logica principal do frame.
+                AtualizarParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA, tempoFrame);
+            }
+
+            // Atualiza o alvo da camera para seguir o centro do personagem no eixo X.
+            camera.target = (Vector2){ jogador.limites.x + jogador.limites.width / 2.0f, alturaTela / 2.0f };
         }
 
         // Inicia a etapa de desenho na tela.
@@ -300,32 +385,7 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
         DesenharChaoMundo(camera.target.x, chaoY, alturaChao, larguraBlocoChao, estilo);
 
         // Desenha os espinhos customizados se existirem.
-        if (espinhosCustomizados != NULL && quantidadeEspinhosCustomizados > 0)
-        {
-            for (int i = 0; i < quantidadeEspinhosCustomizados; i++)
-            {
-                float largura = 34.0f;
-                float altura = 42.0f + espinhosCustomizados[i].variacaoAltura;
-                float baseX = espinhosCustomizados[i].posicaoX;
-
-                Vector2 pontoEsquerdo;
-                pontoEsquerdo.x = baseX;
-                pontoEsquerdo.y = chaoY;
-
-                Vector2 pontoTopo;
-                pontoTopo.x = baseX + largura * 0.5f;
-                pontoTopo.y = chaoY - altura;
-
-                Vector2 pontoDireito;
-                pontoDireito.x = baseX + largura;
-                pontoDireito.y = chaoY;
-
-                DrawTriangle(pontoEsquerdo, pontoTopo, pontoDireito, Fade(estilo.azulNeon, 0.18f));
-                DrawTriangleLines(pontoEsquerdo, pontoTopo, pontoDireito, Fade(estilo.azulNeon, 0.92f));
-                DrawLineEx(pontoEsquerdo, pontoTopo, 2.0f, Fade((Color){ 190, 240, 255, 255 }, 0.90f));
-                DrawLineEx(pontoTopo, pontoDireito, 2.0f, Fade((Color){ 190, 240, 255, 255 }, 0.90f));
-            }
-        }
+        DesenharEspinhosCustomizados(espinhosCustomizados, quantidadeEspinhosCustomizados, chaoY, estilo);
 
         // Desenha as particulas antes do personagem para a energia ficar parcialmente atras dele.
         DesenharParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA);
@@ -333,11 +393,20 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
         // Desenha o personagem com o frame correto da animacao.
         DesenharJogador(&jogador, larguraFrameSprite, alturaFrameSprite);
 
+        // Desenha a porta depois do personagem para reforcar a entrada visual no fim da fase.
+        DesenharPortaSaida(portaSaida, estilo, tempoAnimacaoPorta, portaLiberada || faseConcluida);
+
         // Sai do modo de camera para desenhar elementos fixos da interface.
         EndMode2D();
 
         // Desenha a interface fixa com moldura e textos.
-        DesenharHudCena(larguraTela, alturaTela, estilo, contadorColisoes, temporizadorFlashDano);
+        DesenharHudCena(larguraTela, alturaTela, estilo, contadorColisoes, temporizadorFlashDano,
+                        progressoFase, portaLiberada, faseConcluida);
+
+        if (faseConcluida)
+        {
+            DesenharMensagemConclusaoFase(larguraTela, alturaTela, estilo);
+        }
 
         // Desenha o menu de pausa se o jogo estiver pausado.
         if (emPausa)
@@ -363,6 +432,11 @@ void LoopEditor(int larguraTela, int alturaTela)
         return;
     }
 
+    if (CarregarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA))
+    {
+        printf("Fase carregada automaticamente de: %s\n", CAMINHO_FASE_CUSTOMIZADA);
+    }
+
     // Loop do editor: executa enquanto o jogador nao fecha a janela ou pressiona ESC.
     while (!WindowShouldClose() && !IsKeyPressed(KEY_ESCAPE))
     {
@@ -372,18 +446,26 @@ void LoopEditor(int larguraTela, int alturaTela)
         // Atalho para salvar.
         if (IsKeyPressed(KEY_S))
         {
-            if (SalvarFaseEditor(editor, "fases/fase_customizada.dat"))
+            if (SalvarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA))
             {
-                printf("Fase salva em: fases/fase_customizada.dat\n");
+                printf("Fase salva em: %s\n", CAMINHO_FASE_CUSTOMIZADA);
+            }
+            else
+            {
+                printf("Falha ao salvar a fase em: %s\n", CAMINHO_FASE_CUSTOMIZADA);
             }
         }
 
         // Atalho para carregar.
         if (IsKeyPressed(KEY_L))
         {
-            if (CarregarFaseEditor(editor, "fases/fase_customizada.dat"))
+            if (CarregarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA))
             {
-                printf("Fase carregada de: fases/fase_customizada.dat\n");
+                printf("Fase carregada de: %s\n", CAMINHO_FASE_CUSTOMIZADA);
+            }
+            else
+            {
+                printf("Falha ao carregar a fase de: %s\n", CAMINHO_FASE_CUSTOMIZADA);
             }
         }
 
@@ -412,6 +494,15 @@ void LoopEditor(int larguraTela, int alturaTela)
         BeginDrawing();
         DesenharEditor(editor, larguraTela, alturaTela);
         EndDrawing();
+    }
+
+    if (SalvarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA))
+    {
+        printf("Fase salva automaticamente em: %s\n", CAMINHO_FASE_CUSTOMIZADA);
+    }
+    else
+    {
+        printf("Falha ao salvar automaticamente a fase em: %s\n", CAMINHO_FASE_CUSTOMIZADA);
     }
 
     DestruirEditorFase(editor);
@@ -482,7 +573,7 @@ int main(void)
             // Carrega a fase customizada salva.
             EditorFase faseCarregada = { 0 };
             
-            if (CarregarFaseEditor(&faseCarregada, "fases/fase_customizada.dat") && faseCarregada.quantidadeEspinhos > 0)
+            if (CarregarFaseEditor(&faseCarregada, CAMINHO_FASE_CUSTOMIZADA) && faseCarregada.quantidadeEspinhos > 0)
             {
                 // Toca a fase customizada.
                 LoopJogoComFase(larguraTela, alturaTela, estilo, alturaChao, chaoY,

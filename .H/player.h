@@ -1,5 +1,5 @@
-#ifndef JOGADOR_H
-#define JOGADOR_H
+#ifndef PULSE_DASH_PLAYER_H
+#define PULSE_DASH_PLAYER_H
 
 #include "raylib.h"
 #include <stdbool.h>
@@ -35,6 +35,9 @@ void AtualizarJogador(Jogador *jogador, float tempoFrame, float velocidadeJogado
 
 // Restaura o personagem para a posicao inicial depois de uma colisao ou reinicio de fase.
 void ReiniciarJogador(Jogador *jogador, float inicioX, float chaoY);
+
+// Move o personagem suavemente para dentro da porta de saida ao concluir a fase.
+void AtualizarJogadorEntrandoNaPorta(Jogador *jogador, Rectangle portaSaida, float tempoFrame);
 
 // Informa se o personagem acabou de tocar o chao neste frame.
 bool JogadorAcabouDePousar(const Jogador *jogador);

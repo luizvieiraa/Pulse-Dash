@@ -1,5 +1,5 @@
-#ifndef EFEITOS_H
-#define EFEITOS_H
+#ifndef PULSE_DASH_EFFECTS_H
+#define PULSE_DASH_EFFECTS_H
 
 #include "game_types.h"
 

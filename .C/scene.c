@@ -3,6 +3,21 @@
 #include <math.h>
 #include <stddef.h>
 
+static float LimitarFloat(float valor, float minimo, float maximo)
+{
+    return fmaxf(minimo, fminf(valor, maximo));
+}
+
+static Rectangle ObterAreaInternaPorta(Rectangle portaSaida)
+{
+    return (Rectangle){
+        portaSaida.x + 12.0f,
+        portaSaida.y + 14.0f,
+        portaSaida.width - 24.0f,
+        portaSaida.height - 18.0f
+    };
+}
+
 EstiloCena ObterEstiloCena(void)
 {
     // Centraliza a definicao das cores para o projeto inteiro compartilhar a mesma identidade.
@@ -21,7 +36,7 @@ void DesenharFundoEstiloLogo(float cameraX, int alturaTela, float chaoY)
     const Color corLinha = (Color){ 12, 46, 122, 180 };
     const Color corBrilho = (Color){ 34, 170, 255, 150 };
 
-    // Desenha varios paines retangulares ao fundo para criar profundidade geometrica.
+    // Desenha varios paineis retangulares ao fundo para criar profundidade geometrica.
     for (int indiceBloco = -8; indiceBloco < 42; indiceBloco++)
     {
         float blocoX = floorf(cameraX / 160.0f) * 160.0f + indiceBloco * 160.0f;
@@ -108,14 +123,122 @@ bool VerificarColisaoJogadorEspinho(Rectangle limitesJogador, float chaoY)
 {
     (void)limitesJogador;
     (void)chaoY;
-    
+
     // Os espinhos agora vem do editor de fases.
     // Esta funcao nao e mais usada no fluxo principal.
     return false;
 }
 
-void DesenharHudCena(int larguraTela, int alturaTela, EstiloCena estilo, int contadorColisoes, float temporizadorFlashDano)
+float ObterLimiteDireitoUltimoEspinho(const DadosEspinho *espinhos, int quantidadeEspinhos)
 {
+    if (espinhos == NULL || quantidadeEspinhos <= 0)
+    {
+        return 0.0f;
+    }
+
+    float limiteDireito = espinhos[0].posicaoX + 34.0f;
+
+    for (int i = 1; i < quantidadeEspinhos; i++)
+    {
+        limiteDireito = fmaxf(limiteDireito, espinhos[i].posicaoX + 34.0f);
+    }
+
+    return limiteDireito;
+}
+
+Rectangle CriarPortaSaidaFase(const DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY)
+{
+    const float larguraPorta = 84.0f;
+    const float alturaPorta = 126.0f;
+    const float margemAposUltimoEspinho = 340.0f;
+    float limiteDireitoUltimoEspinho = ObterLimiteDireitoUltimoEspinho(espinhos, quantidadeEspinhos);
+
+    return (Rectangle){
+        limiteDireitoUltimoEspinho + margemAposUltimoEspinho,
+        chaoY - alturaPorta,
+        larguraPorta,
+        alturaPorta
+    };
+}
+
+float CalcularProgressoFase(float posicaoJogadorX, float inicioJogadorX, Rectangle portaSaida)
+{
+    float destinoX = portaSaida.x + portaSaida.width * 0.5f;
+
+    if (destinoX <= inicioJogadorX)
+    {
+        return 1.0f;
+    }
+
+    return LimitarFloat((posicaoJogadorX - inicioJogadorX) / (destinoX - inicioJogadorX), 0.0f, 1.0f);
+}
+
+bool VerificarJogadorEntrouNaPorta(Rectangle limitesJogador, Rectangle portaSaida)
+{
+    Rectangle caixaJogador = {
+        limitesJogador.x + 8.0f,
+        limitesJogador.y + 8.0f,
+        limitesJogador.width - 16.0f,
+        limitesJogador.height - 8.0f
+    };
+    Rectangle areaInternaPorta = ObterAreaInternaPorta(portaSaida);
+
+    return CheckCollisionRecs(caixaJogador, areaInternaPorta);
+}
+
+void DesenharPortaSaida(Rectangle portaSaida, EstiloCena estilo, float tempoAnimacao, bool portaLiberada)
+{
+    float pulso = 0.5f + 0.5f * sinf(tempoAnimacao * 3.6f);
+    Rectangle areaInternaPorta = ObterAreaInternaPorta(portaSaida);
+
+    Color corBrilhoExterno = portaLiberada
+        ? Fade(estilo.azulNeon, 0.22f + pulso * 0.16f)
+        : Fade(estilo.azulNeon, 0.10f + pulso * 0.05f);
+    Color corEstrutura = portaLiberada
+        ? Fade((Color){ 190, 240, 255, 255 }, 0.95f)
+        : Fade(estilo.azulNeon, 0.45f);
+    Color corNucleo = portaLiberada
+        ? Fade((Color){ 120, 235, 255, 255 }, 0.28f + pulso * 0.18f)
+        : Fade((Color){ 52, 182, 255, 255 }, 0.10f + pulso * 0.05f);
+
+    DrawRectangleRounded(
+        (Rectangle){ portaSaida.x - 10.0f, portaSaida.y - 12.0f, portaSaida.width + 20.0f, portaSaida.height + 24.0f },
+        0.22f,
+        10,
+        corBrilhoExterno
+    );
+    DrawRectangleRounded(portaSaida, 0.20f, 10, Fade((Color){ 4, 8, 22, 255 }, 0.90f));
+    DrawRectangleRounded(areaInternaPorta, 0.18f, 10, Fade(BLACK, 0.78f));
+    DrawRectangleRounded(
+        (Rectangle){ areaInternaPorta.x + 6.0f, areaInternaPorta.y + 8.0f, areaInternaPorta.width - 12.0f, areaInternaPorta.height - 14.0f },
+        0.18f,
+        10,
+        corNucleo
+    );
+    DrawRectangleRoundedLines(portaSaida, 0.20f, 10, corEstrutura);
+    DrawLineEx(
+        (Vector2){ portaSaida.x + 14.0f, portaSaida.y + 20.0f },
+        (Vector2){ portaSaida.x + portaSaida.width - 14.0f, portaSaida.y + 20.0f },
+        3.0f,
+        Fade(corEstrutura, 0.85f)
+    );
+    DrawCircle(
+        (int)(portaSaida.x + portaSaida.width * 0.77f),
+        (int)(portaSaida.y + portaSaida.height * 0.48f),
+        4.5f,
+        portaLiberada ? Fade((Color){ 255, 220, 110, 255 }, 0.95f) : Fade(corEstrutura, 0.45f)
+    );
+}
+
+void DesenharHudCena(int larguraTela, int alturaTela, EstiloCena estilo, int contadorColisoes,
+                     float temporizadorFlashDano, float progressoFase, bool portaLiberada,
+                     bool faseConcluida)
+{
+    int percentualProgresso = (int)roundf(progressoFase * 100.0f);
+    const float larguraBarra = 260.0f;
+    const float alturaBarra = 14.0f;
+    float larguraPreenchida = larguraBarra * progressoFase;
+
     // Desenha uma moldura neon ao redor da tela para reforcar a identidade da logo.
     DrawRectangleRoundedLines(
         (Rectangle){ 20.0f, 20.0f, larguraTela - 40.0f, alturaTela - 40.0f },
@@ -132,9 +255,49 @@ void DesenharHudCena(int larguraTela, int alturaTela, EstiloCena estilo, int con
     DrawText("ESTILO VISUAL DA LOGO + RUNNER MINIMALISTA", 34, 66, 20, Fade(BLACK, 0.50f));
     DrawText("ESTILO VISUAL DA LOGO + RUNNER MINIMALISTA", 30, 62, 20, Fade((Color){ 190, 240, 255, 255 }, 0.95f));
 
-    // Exibe a contagem de colisões para dar feedback de progresso durante os testes.
+    // Exibe a contagem de colisoes para dar feedback de progresso durante os testes.
     DrawText(TextFormat("COLISOES: %02i", contadorColisoes), 34, 98, 20, Fade(BLACK, 0.50f));
     DrawText(TextFormat("COLISOES: %02i", contadorColisoes), 30, 94, 20, Fade(estilo.azulNeon, 0.95f));
+
+    // Mostra o andamento da fase no canto superior direito.
+    DrawText("PROGRESSO DA FASE", larguraTela - 334, 34, 18, Fade(BLACK, 0.50f));
+    DrawText("PROGRESSO DA FASE", larguraTela - 338, 30, 18, Fade((Color){ 190, 240, 255, 255 }, 0.95f));
+    DrawText(TextFormat("%03i%%", percentualProgresso), larguraTela - 128, 58, 26, Fade(BLACK, 0.50f));
+    DrawText(TextFormat("%03i%%", percentualProgresso), larguraTela - 132, 54, 26, estilo.azulNeon);
+    DrawRectangleRounded(
+        (Rectangle){ larguraTela - 340.0f, 94.0f, larguraBarra + 18.0f, alturaBarra + 18.0f },
+        0.45f,
+        10,
+        Fade((Color){ 4, 8, 22, 255 }, 0.86f)
+    );
+    DrawRectangleRounded(
+        (Rectangle){ larguraTela - 331.0f, 103.0f, larguraBarra, alturaBarra },
+        0.45f,
+        10,
+        Fade((Color){ 7, 22, 56, 255 }, 0.92f)
+    );
+    DrawRectangleRounded(
+        (Rectangle){ larguraTela - 331.0f, 103.0f, larguraPreenchida, alturaBarra },
+        0.45f,
+        10,
+        Fade(estilo.azulNeon, 0.92f)
+    );
+
+    if (faseConcluida)
+    {
+        DrawText("FASE CONCLUIDA", larguraTela - 336, 128, 20, Fade(BLACK, 0.50f));
+        DrawText("FASE CONCLUIDA", larguraTela - 340, 124, 20, Fade((Color){ 120, 235, 255, 255 }, 0.98f));
+    }
+    else if (portaLiberada)
+    {
+        DrawText("SAIDA LIBERADA", larguraTela - 316, 128, 20, Fade(BLACK, 0.50f));
+        DrawText("SAIDA LIBERADA", larguraTela - 320, 124, 20, Fade((Color){ 255, 220, 110, 255 }, 0.96f));
+    }
+    else
+    {
+        DrawText("PASSE PELOS OBSTACULOS", larguraTela - 384, 128, 20, Fade(BLACK, 0.50f));
+        DrawText("PASSE PELOS OBSTACULOS", larguraTela - 388, 124, 20, Fade((Color){ 190, 240, 255, 255 }, 0.86f));
+    }
 
     // Desenha um aviso temporario em vermelho quando o personagem bate em um espinho.
     if (temporizadorFlashDano > 0.0f)
@@ -145,8 +308,10 @@ void DesenharHudCena(int larguraTela, int alturaTela, EstiloCena estilo, int con
     }
 
     // Instrucao para pausar no canto inferior direito.
-    const char *texPausa = "[P] PAUSAR";
-    int larguraPausa = MeasureText(texPausa, 18);
-    DrawText(texPausa, 34 + larguraTela - 40 - larguraPausa, alturaTela - 54, 18, Fade(BLACK, 0.50f));
-    DrawText(texPausa, 30 + larguraTela - 40 - larguraPausa, alturaTela - 58, 18, Fade(estilo.azulNeon, 0.7f));
+    {
+        const char *textoPausa = "[P] PAUSAR";
+        int larguraPausa = MeasureText(textoPausa, 18);
+        DrawText(textoPausa, 34 + larguraTela - 40 - larguraPausa, alturaTela - 54, 18, Fade(BLACK, 0.50f));
+        DrawText(textoPausa, 30 + larguraTela - 40 - larguraPausa, alturaTela - 58, 18, Fade(estilo.azulNeon, 0.7f));
+    }
 }

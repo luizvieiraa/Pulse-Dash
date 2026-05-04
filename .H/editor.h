@@ -1,8 +1,10 @@
-#ifndef EDITOR_H
-#define EDITOR_H
+#ifndef PULSE_DASH_EDITOR_H
+#define PULSE_DASH_EDITOR_H
 
 #include "game_types.h"
-#include "raylib.h"
+
+// Caminho padrao usado para persistir a fase criada no editor.
+#define CAMINHO_FASE_CUSTOMIZADA "fases/fase_customizada.dat"
 
 // Inicializa um novo editor de fases vazio.
 EditorFase *CriarEditorFase(void);

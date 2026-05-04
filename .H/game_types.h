@@ -1,5 +1,5 @@
-#ifndef TIPOS_JOGO_H
-#define TIPOS_JOGO_H
+#ifndef PULSE_DASH_GAME_TYPES_H
+#define PULSE_DASH_GAME_TYPES_H
 
 #include "raylib.h"
 #include <stdbool.h>
