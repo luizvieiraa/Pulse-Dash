@@ -423,6 +423,16 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
 }
 
 // Funcao principal do editor de fases.
+static bool CarregarFaseCustomizada(EditorFase *editor)
+{
+    if (CarregarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA))
+    {
+        return true;
+    }
+
+    return CarregarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA_LEGADO);
+}
+
 void LoopEditor(int larguraTela, int alturaTela)
 {
     EditorFase *editor = CriarEditorFase();
@@ -432,7 +442,7 @@ void LoopEditor(int larguraTela, int alturaTela)
         return;
     }
 
-    if (CarregarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA))
+    if (CarregarFaseCustomizada(editor))
     {
         printf("Fase carregada automaticamente de: %s\n", CAMINHO_FASE_CUSTOMIZADA);
     }
@@ -459,7 +469,7 @@ void LoopEditor(int larguraTela, int alturaTela)
         // Atalho para carregar.
         if (IsKeyPressed(KEY_L))
         {
-            if (CarregarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA))
+            if (CarregarFaseCustomizada(editor))
             {
                 printf("Fase carregada de: %s\n", CAMINHO_FASE_CUSTOMIZADA);
             }
@@ -573,7 +583,7 @@ int main(void)
             // Carrega a fase customizada salva.
             EditorFase faseCarregada = { 0 };
             
-            if (CarregarFaseEditor(&faseCarregada, CAMINHO_FASE_CUSTOMIZADA) && faseCarregada.quantidadeEspinhos > 0)
+            if (CarregarFaseCustomizada(&faseCarregada) && faseCarregada.quantidadeEspinhos > 0)
             {
                 // Toca a fase customizada.
                 LoopJogoComFase(larguraTela, alturaTela, estilo, alturaChao, chaoY,

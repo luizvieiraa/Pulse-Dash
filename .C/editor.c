@@ -93,14 +93,30 @@ static bool ResolverRaizProjeto(char *raizProjeto, size_t tamanhoRaizProjeto)
         return false;
     }
 
-    char diretorioFases[EDITOR_TAMANHO_MAX_CAMINHO];
-    char diretorioHeaders[EDITOR_TAMANHO_MAX_CAMINHO];
+    const char *candidatos[] = {
+        "%s",
+        "%s../",
+        "%s../../"
+    };
 
-    snprintf(raizProjeto, tamanhoRaizProjeto, "%s../../", diretorioAplicacao);
-    snprintf(diretorioFases, sizeof(diretorioFases), "%s../../fases", diretorioAplicacao);
-    snprintf(diretorioHeaders, sizeof(diretorioHeaders), "%s../../.H", diretorioAplicacao);
+    for (int i = 0; i < 3; i++)
+    {
+        char candidatoRaiz[EDITOR_TAMANHO_MAX_CAMINHO];
+        char diretorioFases[EDITOR_TAMANHO_MAX_CAMINHO];
+        char diretorioHeaders[EDITOR_TAMANHO_MAX_CAMINHO];
 
-    return DirectoryExists(diretorioFases) || DirectoryExists(diretorioHeaders);
+        snprintf(candidatoRaiz, sizeof(candidatoRaiz), candidatos[i], diretorioAplicacao);
+        snprintf(diretorioFases, sizeof(diretorioFases), "%sfases", candidatoRaiz);
+        snprintf(diretorioHeaders, sizeof(diretorioHeaders), "%s.H", candidatoRaiz);
+
+        if (DirectoryExists(diretorioFases) || DirectoryExists(diretorioHeaders))
+        {
+            CopiarTextoSeguro(raizProjeto, tamanhoRaizProjeto, candidatoRaiz);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static bool ResolverCaminhoFase(const char *caminhoArquivo, char *caminhoResolvido, size_t tamanhoCaminho, bool paraEscrita)
@@ -140,6 +156,112 @@ static bool ResolverCaminhoFase(const char *caminhoArquivo, char *caminhoResolvi
     // Fallback para o caminho relativo atual.
     CopiarTextoSeguro(caminhoResolvido, tamanhoCaminho, caminhoArquivo);
     return paraEscrita || FileExists(caminhoResolvido);
+}
+
+static bool TentarLerEspinhoTexto(const char *linha, DadosEspinho *espinho)
+{
+    if (linha == NULL || espinho == NULL)
+    {
+        return false;
+    }
+
+    float posicaoX = 0.0f;
+    float variacaoAltura = 0.0f;
+
+    if (sscanf(linha, " %f %f", &posicaoX, &variacaoAltura) == 2 ||
+        sscanf(linha, " %f,%f", &posicaoX, &variacaoAltura) == 2 ||
+        sscanf(linha, " %f;%f", &posicaoX, &variacaoAltura) == 2)
+    {
+        espinho->posicaoX = posicaoX;
+        espinho->variacaoAltura = variacaoAltura;
+        return true;
+    }
+
+    return false;
+}
+
+static bool CarregarFaseEditorTexto(EditorFase *editor, const char *caminhoResolvido)
+{
+    FILE *arquivo = fopen(caminhoResolvido, "r");
+
+    if (arquivo == NULL)
+    {
+        return false;
+    }
+
+    char linha[256];
+    int quantidadeDeclarada = -1;
+    int quantidadeEspinhos = 0;
+    bool nomeDefinido = false;
+    DadosEspinho espinhosLidos[MAX_ESPINHOS_FASE] = { 0 };
+    char nomeFase[64] = "Fase Customizada";
+
+    while (fgets(linha, sizeof(linha), arquivo) != NULL)
+    {
+        char *conteudo = linha;
+
+        while (*conteudo == ' ' || *conteudo == '\t')
+        {
+            conteudo++;
+        }
+
+        if (*conteudo == '\0' || *conteudo == '\n' || *conteudo == '\r' || *conteudo == '#')
+        {
+            continue;
+        }
+
+        if (quantidadeDeclarada < 0)
+        {
+            int quantidade = 0;
+            DadosEspinho primeiroEspinho = { 0 };
+
+            if (TentarLerEspinhoTexto(conteudo, &primeiroEspinho))
+            {
+                espinhosLidos[quantidadeEspinhos++] = primeiroEspinho;
+                quantidadeDeclarada = 0;
+                continue;
+            }
+
+            if (sscanf(conteudo, " %d", &quantidade) == 1 && quantidade >= 0 && quantidade <= MAX_ESPINHOS_FASE)
+            {
+                quantidadeDeclarada = quantidade;
+                continue;
+            }
+        }
+
+        DadosEspinho espinho = { 0 };
+
+        if (TentarLerEspinhoTexto(conteudo, &espinho))
+        {
+            if (quantidadeEspinhos >= MAX_ESPINHOS_FASE)
+            {
+                fclose(arquivo);
+                return false;
+            }
+
+            espinhosLidos[quantidadeEspinhos++] = espinho;
+        }
+        else if (!nomeDefinido)
+        {
+            CopiarTextoSeguro(nomeFase, sizeof(nomeFase), conteudo);
+            nomeFase[strcspn(nomeFase, "\r\n")] = '\0';
+            nomeDefinido = true;
+        }
+    }
+
+    fclose(arquivo);
+
+    if (quantidadeEspinhos == 0 || (quantidadeDeclarada > 0 && quantidadeEspinhos != quantidadeDeclarada))
+    {
+        return false;
+    }
+
+    LimparEspinhosEditor(editor);
+    editor->quantidadeEspinhos = quantidadeEspinhos;
+    memcpy(editor->espinhos, espinhosLidos, sizeof(DadosEspinho) * (size_t)quantidadeEspinhos);
+    CopiarTextoSeguro(editor->nomeFase, sizeof(editor->nomeFase), nomeFase);
+
+    return true;
 }
 
 EditorFase *CriarEditorFase(void)
@@ -476,7 +598,7 @@ bool CarregarFaseEditor(EditorFase *editor, const char *caminhoArquivo)
     
     if (arquivo == NULL)
     {
-        return false;
+        return CarregarFaseEditorTexto(editor, caminhoResolvido);
     }
 
     int quantidadeEspinhos = 0;
@@ -487,20 +609,20 @@ bool CarregarFaseEditor(EditorFase *editor, const char *caminhoArquivo)
     if (fread(&quantidadeEspinhos, sizeof(int), 1, arquivo) != 1)
     {
         fclose(arquivo);
-        return false;
+        return CarregarFaseEditorTexto(editor, caminhoResolvido);
     }
 
     if (quantidadeEspinhos < 0 || quantidadeEspinhos > MAX_ESPINHOS_FASE)
     {
         fclose(arquivo);
-        return false;
+        return CarregarFaseEditorTexto(editor, caminhoResolvido);
     }
 
     // Carrega nome da fase.
     if (fread(nomeFase, sizeof(char), sizeof(nomeFase), arquivo) != sizeof(nomeFase))
     {
         fclose(arquivo);
-        return false;
+        return CarregarFaseEditorTexto(editor, caminhoResolvido);
     }
 
     // Carrega espinhos.
@@ -508,7 +630,7 @@ bool CarregarFaseEditor(EditorFase *editor, const char *caminhoArquivo)
         fread(espinhosLidos, sizeof(DadosEspinho), (size_t)quantidadeEspinhos, arquivo) != (size_t)quantidadeEspinhos)
     {
         fclose(arquivo);
-        return false;
+        return CarregarFaseEditorTexto(editor, caminhoResolvido);
     }
 
     fclose(arquivo);
