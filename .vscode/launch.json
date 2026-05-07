@@ -5,7 +5,7 @@
             "name": "Pulse Dash",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}\\.C\\output\\pulse_dash.exe",
+            "program": "${workspaceFolder}\\.C\\pulse_dash.exe",
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build Pulse Dash",
             "stopAtEntry": false,

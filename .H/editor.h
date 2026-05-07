@@ -5,6 +5,7 @@
 
 // Caminho padrao usado para persistir a fase criada no editor.
 #define CAMINHO_FASE_CUSTOMIZADA "fases/fase_customizada.dat"
+#define CAMINHO_FASE_CUSTOMIZADA_LEGADO "fases/fase_customizada.txt"
 
 // Inicializa um novo editor de fases vazio.
 EditorFase *CriarEditorFase(void);

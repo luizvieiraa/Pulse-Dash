@@ -4,7 +4,7 @@
         {
             "label": "Build Pulse Dash",
             "type": "shell",
-            "command": "gcc",
+            "command": "C:\\raylib\\w64devkit\\bin\\gcc.exe",
             "args": [
                 "-std=c99",
                 "-Wall",
@@ -16,7 +16,7 @@
                 "C:\\raylib\\w64devkit\\include",
                 "${workspaceFolder}\\.C\\pulse_dash.c",
                 "-o",
-                "${workspaceFolder}\\.C\\output\\pulse_dash.exe",
+                "${workspaceFolder}\\.C\\pulse_dash.exe",
                 "-L",
                 "C:\\raylib\\w64devkit\\lib",
                 "-lraylib",
