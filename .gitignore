@@ -1,0 +1,25 @@
+# Binaries
+*.exe
+*.dll
+*.pdb
+
+# Object files / intermediates
+*.o
+*.obj
+*.a
+*.lib
+
+# Build outputs
+build/
+out/
+release/
+debug/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# OS files
+Thumbs.db
+Desktop.ini
