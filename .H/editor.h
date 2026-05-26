@@ -4,6 +4,10 @@
 #include "game_types.h"
 
 // Caminho padrao usado para persistir a fase criada no editor.
+#define TOTAL_FASES 3
+#define CAMINHO_FASE_1 "fases/fase_1.dat"
+#define CAMINHO_FASE_2 "fases/fase_2.dat"
+#define CAMINHO_FASE_3 "fases/fase_3.dat"
 #define CAMINHO_FASE_CUSTOMIZADA "fases/fase_customizada.dat"
 #define CAMINHO_FASE_CUSTOMIZADA_LEGADO "fases/fase_customizada.txt"
 

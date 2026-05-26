@@ -33,6 +33,7 @@ typedef struct
 typedef enum
 {
     MODO_MENU,
+    MODO_SELECAO_FASE,
     MODO_JOGO,
     MODO_EDITOR
 } ModoAplicacao;

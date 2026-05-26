@@ -16,8 +16,11 @@ typedef struct EstiloCena
 // Retorna as cores principais do estilo visual inspirado na logo.
 EstiloCena ObterEstiloCena(void);
 
+// Retorna a paleta visual de uma fase especifica.
+EstiloCena ObterEstiloCenaFase(int numeroFase);
+
 // Desenha o fundo com blocos e pequenos detalhes luminosos inspirados na logo do jogo.
-void DesenharFundoEstiloLogo(float cameraX, int alturaTela, float chaoY);
+void DesenharFundoEstiloLogo(float cameraX, int alturaTela, float chaoY, EstiloCena estilo);
 
 // Desenha o chao, as marcas de energia e os detalhes do piso.
 void DesenharChaoMundo(float alvoCameraX, float chaoY, float alturaChao, float larguraBlocoChao, EstiloCena estilo);

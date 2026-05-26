@@ -1,4 +1,5 @@
 #include "../.H/editor.h"
+#include "../.H/scene.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -279,7 +280,7 @@ EditorFase *CriarEditorFase(void)
     editor->faseEdicao = 1;
     editor->cameraX = 0.0f;
     editor->testando = false;
-    strcpy(editor->nomeFase, "Fase Customizada");
+    strcpy(editor->nomeFase, "Fase 1");
     
     return editor;
 }
@@ -441,14 +442,18 @@ void DesenharEditor(EditorFase *editor, int larguraTela, int alturaTela)
         return;
     }
     
+    EstiloCena estilo = ObterEstiloCenaFase(editor->faseEdicao);
+    Color corEspinhoNormal = estilo.azulNeon;
+    Color corPreview = Fade(estilo.azulNeon, 0.40f);
+
     // Fundo com grid.
-    ClearBackground((Color){ 2, 5, 16, 255 });
+    ClearBackground(estilo.corFundo);
     
     // Desenha linhas de grade horizontal para referencia.
     for (int y = (int)EDITOR_ALTURA_CHAO - 200; y < (int)EDITOR_ALTURA_CHAO; y += 50)
     {
         DrawLineEx((Vector2){ 0, (float)y }, (Vector2){ (float)larguraTela, (float)y }, 
-                   1.0f, Fade((Color){ 52, 182, 255, 255 }, 0.2f));
+                   1.0f, Fade(estilo.azulNeon, 0.2f));
     }
     
     // Desenha linhas de grade vertical para referencia.
@@ -456,12 +461,12 @@ void DesenharEditor(EditorFase *editor, int larguraTela, int alturaTela)
     {
         DrawLineEx((Vector2){ (float)x, EDITOR_ALTURA_CHAO - 200.0f }, 
                    (Vector2){ (float)x, EDITOR_ALTURA_CHAO }, 
-                   1.0f, Fade((Color){ 52, 182, 255, 255 }, 0.2f));
+                   1.0f, Fade(estilo.azulNeon, 0.2f));
     }
     
     // Desenha a linha do chao.
     DrawLineEx((Vector2){ 0, EDITOR_ALTURA_CHAO }, (Vector2){ (float)larguraTela, EDITOR_ALTURA_CHAO }, 
-               4.0f, (Color){ 52, 182, 255, 255 });
+               4.0f, estilo.azulNeon);
     
     // Desenha os espinhos existentes.
     for (int i = 0; i < editor->quantidadeEspinhos; i++)
@@ -473,8 +478,8 @@ void DesenharEditor(EditorFase *editor, int larguraTela, int alturaTela)
         if (posX >= -50.0f && posX <= (float)larguraTela + 50.0f)
         {
             Vector2 centro = { posX, EDITOR_ALTURA_CHAO };
-            DrawCircleV(centro, 12.0f, EDITOR_COR_ESPINHO_NORMAL);
-            DrawCircleLines((int)centro.x, (int)centro.y, 12.0f, EDITOR_COR_ESPINHO_NORMAL);
+            DrawCircleV(centro, 12.0f, corEspinhoNormal);
+            DrawCircleLines((int)centro.x, (int)centro.y, 12.0f, corEspinhoNormal);
             
             // Desenha um triangulo representando o espinho.
             float altura = 30.0f + editor->espinhos[i].variacaoAltura;
@@ -482,7 +487,7 @@ void DesenharEditor(EditorFase *editor, int larguraTela, int alturaTela)
                 (Vector2){ centro.x - 10.0f, centro.y },
                 (Vector2){ centro.x, centro.y - altura },
                 (Vector2){ centro.x + 10.0f, centro.y },
-                Fade(EDITOR_COR_ESPINHO_NORMAL, 0.6f)
+                Fade(corEspinhoNormal, 0.6f)
             );
         }
     }
@@ -491,27 +496,28 @@ void DesenharEditor(EditorFase *editor, int larguraTela, int alturaTela)
     if (editor->mostrandoPreview)
     {
         Vector2 centro = editor->mouseUltimo;
-        DrawCircleV(centro, 12.0f, EDITOR_COR_PREVIEW);
+        DrawCircleV(centro, 12.0f, corPreview);
         
         float altura = 30.0f;
         DrawTriangle(
             (Vector2){ centro.x - 10.0f, centro.y },
             (Vector2){ centro.x, centro.y - altura },
             (Vector2){ centro.x + 10.0f, centro.y },
-            EDITOR_COR_PREVIEW
+            corPreview
         );
     }
     
     // Interface fixa.
-    DrawRectangle(0, 0, larguraTela, 80, Fade((Color){ 10, 32, 110, 255 }, 0.8f));
+    DrawRectangle(0, 0, larguraTela, 92, Fade(estilo.azulProfundo, 0.8f));
     
-    DrawText("EDITOR DE FASES", 20, 10, 24, (Color){ 52, 182, 255, 255 });
+    DrawText(TextFormat("EDITOR DE FASES - FASE %d", editor->faseEdicao), 20, 10, 24, estilo.azulNeon);
     DrawText(TextFormat("Espinhos: %d / %d", editor->quantidadeEspinhos, MAX_ESPINHOS_FASE), 
              20, 40, 16, (Color){ 190, 240, 255, 255 });
     
     DrawText("[CLIQUE ESQ] Colocar | [CLIQUE DIR] Remover", 300, 15, 16, (Color){ 190, 240, 255, 255 });
     DrawText("[S] Salvar | [L] Carregar | [C] Limpar | [P] Testar | [ESC] Voltar", 300, 35, 16, (Color){ 190, 240, 255, 255 });
-    DrawText("[SETAS/WASD] Scroll", 300, 55, 14, Fade((Color){ 190, 240, 255, 255 }, 0.7f));
+    DrawText("[1/2/3] Trocar fase | [SETAS/WASD] Scroll", 300, 58, 14, Fade((Color){ 190, 240, 255, 255 }, 0.7f));
+    DrawText(TextFormat("Arquivo da Fase %d", editor->faseEdicao), 20, 62, 14, Fade((Color){ 190, 240, 255, 255 }, 0.75f));
     
     // Mostra quantidade maxima se estiver perto do limite.
     if (editor->quantidadeEspinhos >= MAX_ESPINHOS_FASE - 10)
@@ -685,7 +691,7 @@ bool VerificarColisaoComEspinhos(Rectangle limitesJogador, DadosEspinho *espinho
 }
 
 // Desenha os espinhos da fase editada.
-static void DesenharEspinhosFase(DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY, Camera2D camera)
+static void DesenharEspinhosFase(DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY, Camera2D camera, EstiloCena estilo)
 {
     (void)camera;
     
@@ -693,8 +699,6 @@ static void DesenharEspinhosFase(DadosEspinho *espinhos, int quantidadeEspinhos,
     {
         return;
     }
-
-    EstiloCena estilo = ObterEstiloCena();
 
     for (int i = 0; i < quantidadeEspinhos; i++)
     {
@@ -744,7 +748,7 @@ bool TestarFaseEditor(EditorFase *editor, int larguraTela, int alturaTela)
     Rectangle portaSaida = CriarPortaSaidaFase(editor->espinhos, editor->quantidadeEspinhos, chaoY);
     float limiteDireitoUltimoEspinho = ObterLimiteDireitoUltimoEspinho(editor->espinhos, editor->quantidadeEspinhos);
 
-    EstiloCena estilo = ObterEstiloCena();
+    EstiloCena estilo = ObterEstiloCenaFase(editor->faseEdicao);
 
     ParticulaPoeira particulasPoeira[MAX_PARTICULAS_POEIRA] = { 0 };
     float temporizadorPoeiraCorrida = 0.0f;
@@ -854,17 +858,17 @@ bool TestarFaseEditor(EditorFase *editor, int larguraTela, int alturaTela)
 
         BeginMode2D(camera);
 
-        DesenharFundoEstiloLogo(camera.target.x - camera.offset.x, alturaTela, chaoY);
+        DesenharFundoEstiloLogo(camera.target.x - camera.offset.x, alturaTela, chaoY, estilo);
         DesenharChaoMundo(camera.target.x, chaoY, alturaChao, larguraBlocoChao, estilo);
-        DesenharEspinhosFase(editor->espinhos, editor->quantidadeEspinhos, chaoY, camera);
+        DesenharEspinhosFase(editor->espinhos, editor->quantidadeEspinhos, chaoY, camera, estilo);
         DesenharParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA);
         DesenharJogador(&jogador, larguraFrameSprite, alturaFrameSprite);
         DesenharPortaSaida(portaSaida, estilo, tempoAnimacaoPorta, portaLiberada || faseConcluida);
 
         EndMode2D();
 
-        DrawRectangle(0, 0, larguraTela, 84, Fade((Color){ 10, 32, 110, 255 }, 0.82f));
-        DrawText("TESTANDO FASE DO EDITOR", 20, 15, 20, (Color){ 52, 182, 255, 255 });
+        DrawRectangle(0, 0, larguraTela, 84, Fade(estilo.azulProfundo, 0.82f));
+        DrawText(TextFormat("TESTANDO FASE %d DO EDITOR", editor->faseEdicao), 20, 15, 20, estilo.azulNeon);
         DrawText(
             TextFormat("Colisoes: %d | Progresso: %03i%% | [ESC] Volta ao Editor", contadorColisoes, (int)roundf(progressoFase * 100.0f)),
             20,

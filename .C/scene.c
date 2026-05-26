@@ -29,12 +29,32 @@ EstiloCena ObterEstiloCena(void)
     return estilo;
 }
 
-void DesenharFundoEstiloLogo(float cameraX, int alturaTela, float chaoY)
+EstiloCena ObterEstiloCenaFase(int numeroFase)
+{
+    EstiloCena estilo = ObterEstiloCena();
+
+    if (numeroFase == 2)
+    {
+        estilo.corFundo = (Color){ 2, 18, 8, 255 };
+        estilo.azulNeon = (Color){ 74, 230, 108, 255 };
+        estilo.azulProfundo = (Color){ 12, 90, 42, 255 };
+    }
+    else if (numeroFase == 3)
+    {
+        estilo.corFundo = (Color){ 22, 4, 6, 255 };
+        estilo.azulNeon = (Color){ 255, 76, 86, 255 };
+        estilo.azulProfundo = (Color){ 116, 22, 32, 255 };
+    }
+
+    return estilo;
+}
+
+void DesenharFundoEstiloLogo(float cameraX, int alturaTela, float chaoY, EstiloCena estilo)
 {
     // Define as cores principais do ambiente escuro com brilho neon.
-    const Color corPainel = (Color){ 4, 8, 22, 255 };
-    const Color corLinha = (Color){ 12, 46, 122, 180 };
-    const Color corBrilho = (Color){ 34, 170, 255, 150 };
+    Color corPainel = Fade(estilo.azulProfundo, 0.55f);
+    Color corLinha = Fade(estilo.azulNeon, 0.42f);
+    Color corBrilho = Fade(estilo.azulNeon, 0.72f);
 
     // Desenha varios paineis retangulares ao fundo para criar profundidade geometrica.
     for (int indiceBloco = -8; indiceBloco < 42; indiceBloco++)
@@ -90,7 +110,7 @@ void DesenharChaoMundo(float alvoCameraX, float chaoY, float alturaChao, float l
     for (int indicePiso = -2; indicePiso < 80; indicePiso++)
     {
         float pisoX = indicePiso * larguraBlocoChao;
-        Color corPiso = (indicePiso % 2 == 0) ? Fade(estilo.azulProfundo, 0.45f) : Fade((Color){ 16, 52, 150, 255 }, 0.42f);
+        Color corPiso = (indicePiso % 2 == 0) ? Fade(estilo.azulProfundo, 0.45f) : Fade(estilo.azulNeon, 0.16f);
 
         DrawRectangle((int)pisoX, (int)chaoY, (int)larguraBlocoChao, (int)alturaChao, corPiso);
         DrawRectangle((int)pisoX, (int)chaoY, (int)larguraBlocoChao, 16, Fade(estilo.azulNeon, 0.18f));

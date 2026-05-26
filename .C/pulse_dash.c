@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define CAMINHO_PROGRESSO_FASES "fases/progresso.dat"
+
 // Funcao que desenha o menu principal com opcoes de jogar ou editar.
 void DesenharMenu(int larguraTela, int alturaTela, EstiloCena estilo, int opcaoSelecionada)
 {
@@ -63,7 +65,7 @@ ModoAplicacao AtualizarMenu(int *opcaoSelecionada)
     {
         if (*opcaoSelecionada == 0)
         {
-            return MODO_JOGO;
+            return MODO_SELECAO_FASE;
         }
         else if (*opcaoSelecionada == 1)
         {
@@ -76,6 +78,106 @@ ModoAplicacao AtualizarMenu(int *opcaoSelecionada)
     }
 
     return MODO_MENU;
+}
+
+static void DesenharMenuSelecaoFase(int larguraTela, int alturaTela, int opcaoSelecionada, const float progressoFases[TOTAL_FASES])
+{
+    EstiloCena estiloBase = ObterEstiloCena();
+
+    ClearBackground(estiloBase.corFundo);
+
+    const char *titulo = "SELECIONAR FASE";
+    int larguraTitulo = MeasureText(titulo, 52);
+    DrawText(titulo, larguraTela / 2 - larguraTitulo / 2, 80, 52, estiloBase.azulNeon);
+
+    int quantidadeOpcoes = TOTAL_FASES + 1;
+    int larguraCartao = 640;
+    int alturaCartao = 84;
+    int posY = 190;
+
+    for (int i = 0; i < quantidadeOpcoes; i++)
+    {
+        bool selecionada = (i == opcaoSelecionada);
+        Rectangle areaOpcao = {
+            larguraTela * 0.5f - larguraCartao * 0.5f,
+            (float)posY,
+            (float)larguraCartao,
+            (float)alturaCartao
+        };
+
+        if (i < TOTAL_FASES)
+        {
+            int numeroFase = i + 1;
+            EstiloCena estiloFase = ObterEstiloCenaFase(numeroFase);
+            float progresso = fmaxf(0.0f, fminf(progressoFases[i], 1.0f));
+            int percentual = (int)roundf(progresso * 100.0f);
+
+            DrawRectangleRounded(areaOpcao, 0.08f, 8, Fade(estiloFase.azulProfundo, selecionada ? 0.86f : 0.54f));
+            DrawRectangleRoundedLines(areaOpcao, 0.08f, 8, selecionada ? Fade(WHITE, 0.90f) : Fade(estiloFase.azulNeon, 0.62f));
+            DrawText(TextFormat("FASE %d", numeroFase), (int)areaOpcao.x + 24, posY + 18, 28, selecionada ? WHITE : estiloFase.azulNeon);
+            DrawText(TextFormat("PROGRESSO: %03d%%", percentual), (int)areaOpcao.x + 420, posY + 20, 22, Fade((Color){ 190, 240, 255, 255 }, 0.95f));
+
+            DrawRectangleRounded(
+                (Rectangle){ areaOpcao.x + 24.0f, areaOpcao.y + 58.0f, 592.0f, 10.0f },
+                0.45f,
+                8,
+                Fade(BLACK, 0.38f)
+            );
+            DrawRectangleRounded(
+                (Rectangle){ areaOpcao.x + 24.0f, areaOpcao.y + 58.0f, 592.0f * progresso, 10.0f },
+                0.45f,
+                8,
+                Fade(estiloFase.azulNeon, 0.92f)
+            );
+        }
+        else
+        {
+            DrawRectangleRounded(areaOpcao, 0.08f, 8, Fade(estiloBase.azulProfundo, selecionada ? 0.82f : 0.44f));
+            DrawRectangleRoundedLines(areaOpcao, 0.08f, 8, selecionada ? Fade(WHITE, 0.90f) : Fade(estiloBase.azulNeon, 0.55f));
+
+            const char *textoVoltar = "VOLTAR";
+            int larguraTexto = MeasureText(textoVoltar, 28);
+            DrawText(textoVoltar, larguraTela / 2 - larguraTexto / 2, posY + 28, 28, selecionada ? WHITE : estiloBase.azulNeon);
+        }
+
+        posY += alturaCartao + 18;
+    }
+
+    const char *instrucoes = "[SETA CIMA/BAIXO] Selecionar | [ENTER] Confirmar | [ESC] Voltar";
+    int larguraInstrucoes = MeasureText(instrucoes, 16);
+    DrawText(instrucoes, larguraTela / 2 - larguraInstrucoes / 2, alturaTela - 48, 16, Fade(estiloBase.azulNeon, 0.75f));
+}
+
+static int AtualizarMenuSelecaoFase(int *opcaoSelecionada)
+{
+    int quantidadeOpcoes = TOTAL_FASES + 1;
+
+    if (IsKeyPressed(KEY_UP))
+    {
+        *opcaoSelecionada = (*opcaoSelecionada - 1 + quantidadeOpcoes) % quantidadeOpcoes;
+    }
+
+    if (IsKeyPressed(KEY_DOWN))
+    {
+        *opcaoSelecionada = (*opcaoSelecionada + 1) % quantidadeOpcoes;
+    }
+
+    if (IsKeyPressed(KEY_ESCAPE))
+    {
+        return -1;
+    }
+
+    if (IsKeyPressed(KEY_ENTER))
+    {
+        if (*opcaoSelecionada < TOTAL_FASES)
+        {
+            return *opcaoSelecionada + 1;
+        }
+
+        return -1;
+    }
+
+    return 0;
 }
 
 // Desenha o menu de pausa durante o jogo.
@@ -146,6 +248,115 @@ int AtualizarMenuPausa(int *opcaoSelecionada)
     return -1; // Nenhuma acao
 }
 
+static const char *ObterCaminhoFase(int numeroFase)
+{
+    switch (numeroFase)
+    {
+        case 1: return CAMINHO_FASE_1;
+        case 2: return CAMINHO_FASE_2;
+        case 3: return CAMINHO_FASE_3;
+        default: return CAMINHO_FASE_1;
+    }
+}
+
+static void PrepararEditorParaFase(EditorFase *editor, int numeroFase)
+{
+    if (editor == NULL)
+    {
+        return;
+    }
+
+    editor->faseEdicao = numeroFase;
+    editor->cameraX = 0.0f;
+    editor->mostrandoPreview = false;
+    snprintf(editor->nomeFase, sizeof(editor->nomeFase), "Fase %d", numeroFase);
+}
+
+static bool CarregarFasePorNumero(EditorFase *editor, int numeroFase)
+{
+    if (editor == NULL)
+    {
+        return false;
+    }
+
+    PrepararEditorParaFase(editor, numeroFase);
+    LimparEspinhosEditor(editor);
+
+    if (CarregarFaseEditor(editor, ObterCaminhoFase(numeroFase)))
+    {
+        editor->faseEdicao = numeroFase;
+        return true;
+    }
+
+    if (numeroFase == 1 && CarregarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA))
+    {
+        editor->faseEdicao = numeroFase;
+        return true;
+    }
+
+    if (numeroFase == 1 && CarregarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA_LEGADO))
+    {
+        editor->faseEdicao = numeroFase;
+        return true;
+    }
+
+    PrepararEditorParaFase(editor, numeroFase);
+    return false;
+}
+
+static bool SalvarFaseAtual(EditorFase *editor)
+{
+    if (editor == NULL)
+    {
+        return false;
+    }
+
+    return SalvarFaseEditor(editor, ObterCaminhoFase(editor->faseEdicao));
+}
+
+static void ZerarProgressosFases(float progressoFases[TOTAL_FASES])
+{
+    for (int i = 0; i < TOTAL_FASES; i++)
+    {
+        progressoFases[i] = 0.0f;
+    }
+}
+
+static void CarregarProgressosFases(float progressoFases[TOTAL_FASES])
+{
+    ZerarProgressosFases(progressoFases);
+
+    FILE *arquivo = fopen(CAMINHO_PROGRESSO_FASES, "rb");
+
+    if (arquivo == NULL)
+    {
+        return;
+    }
+
+    fread(progressoFases, sizeof(float), TOTAL_FASES, arquivo);
+    fclose(arquivo);
+
+    for (int i = 0; i < TOTAL_FASES; i++)
+    {
+        progressoFases[i] = fmaxf(0.0f, fminf(progressoFases[i], 1.0f));
+    }
+}
+
+static bool SalvarProgressosFases(const float progressoFases[TOTAL_FASES])
+{
+    FILE *arquivo = fopen(CAMINHO_PROGRESSO_FASES, "wb");
+
+    if (arquivo == NULL)
+    {
+        return false;
+    }
+
+    bool salvou = fwrite(progressoFases, sizeof(float), TOTAL_FASES, arquivo) == TOTAL_FASES;
+    fclose(arquivo);
+
+    return salvou;
+}
+
 static void DesenharEspinhosCustomizados(const DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY, EstiloCena estilo)
 {
     if (espinhos == NULL || quantidadeEspinhos <= 0)
@@ -170,9 +381,9 @@ static void DesenharEspinhosCustomizados(const DadosEspinho *espinhos, int quant
     }
 }
 
-static void DesenharMensagemConclusaoFase(int larguraTela, int alturaTela, EstiloCena estilo)
+static void DesenharMensagemConclusaoFase(int larguraTela, int alturaTela, EstiloCena estilo, int numeroFase)
 {
-    const char *titulo = "FASE CONCLUIDA";
+    const char *titulo = TextFormat("FASE %d CONCLUIDA", numeroFase);
     const char *subtitulo = "O CUBO ENTROU NA PORTA";
     int larguraTitulo = MeasureText(titulo, 44);
     int larguraSubtitulo = MeasureText(subtitulo, 20);
@@ -190,11 +401,13 @@ static void DesenharMensagemConclusaoFase(int larguraTela, int alturaTela, Estil
 }
 
 // Versao do LoopJogo que suporta fases customizadas.
-void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float alturaChao, 
+bool LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, int numeroFase, int totalFases,
+                     float alturaChao, 
                      float chaoY, float larguraJogador, float alturaJogador, int larguraFrameSprite, 
                      int alturaFrameSprite, int quantidadeFramesSprite, float velocidadeJogador, 
                      float gravidade, float forcaPulo, float larguraBlocoChao, float inicioJogadorX,
-                     DadosEspinho *espinhosCustomizados, int quantidadeEspinhosCustomizados)
+                     DadosEspinho *espinhosCustomizados, int quantidadeEspinhosCustomizados,
+                     float *progressoMaximoFase)
 {
     Rectangle portaSaida = CriarPortaSaidaFase(espinhosCustomizados, quantidadeEspinhosCustomizados, chaoY);
     float limiteDireitoUltimoEspinho = ObterLimiteDireitoUltimoEspinho(espinhosCustomizados, quantidadeEspinhosCustomizados);
@@ -251,6 +464,8 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
 
     // Controla se deve retornar ao menu principal.
     bool voltarAoMenu = false;
+    bool faseFinalizadaComSucesso = false;
+    float melhorProgressoFase = progressoMaximoFase != NULL ? *progressoMaximoFase : 0.0f;
 
     // Loop de jogo: executa enquanto o jogador nao fecha a janela.
     while (!WindowShouldClose() && !voltarAoMenu)
@@ -294,9 +509,11 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
                 AtualizarJogadorEntrandoNaPorta(&jogador, portaSaida, tempoFrame);
                 AtualizarParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA, tempoFrame);
                 progressoFase = 1.0f;
+                melhorProgressoFase = 1.0f;
 
                 if (temporizadorConclusaoFase <= 0.0f)
                 {
+                    faseFinalizadaComSucesso = true;
                     voltarAoMenu = true;
                 }
             }
@@ -351,6 +568,7 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
                     inicioJogadorX,
                     portaSaida
                 );
+                melhorProgressoFase = fmaxf(melhorProgressoFase, progressoFase);
 
                 if (portaLiberada && VerificarJogadorEntrouNaPorta(jogador.limites, portaSaida))
                 {
@@ -379,7 +597,7 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
         BeginMode2D(camera);
 
         // Desenha os blocos geometricos e detalhes luminosos do fundo.
-        DesenharFundoEstiloLogo(camera.target.x - camera.offset.x, alturaTela, chaoY);
+        DesenharFundoEstiloLogo(camera.target.x - camera.offset.x, alturaTela, chaoY, estilo);
 
         // Desenha o piso completo da fase com blocos, linhas e espinhos decorativos.
         DesenharChaoMundo(camera.target.x, chaoY, alturaChao, larguraBlocoChao, estilo);
@@ -403,9 +621,12 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
         DesenharHudCena(larguraTela, alturaTela, estilo, contadorColisoes, temporizadorFlashDano,
                         progressoFase, portaLiberada, faseConcluida);
 
+        DrawText(TextFormat("FASE %d / %d", numeroFase, totalFases), 34, 156, 20, Fade(BLACK, 0.50f));
+        DrawText(TextFormat("FASE %d / %d", numeroFase, totalFases), 30, 152, 20, Fade(estilo.azulNeon, 0.95f));
+
         if (faseConcluida)
         {
-            DesenharMensagemConclusaoFase(larguraTela, alturaTela, estilo);
+            DesenharMensagemConclusaoFase(larguraTela, alturaTela, estilo, numeroFase);
         }
 
         // Desenha o menu de pausa se o jogo estiver pausado.
@@ -420,17 +641,19 @@ void LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, float a
 
     // Libera os recursos do personagem antes de encerrar o jogo.
     DestruirJogador(&jogador);
+
+    if (progressoMaximoFase != NULL)
+    {
+        *progressoMaximoFase = fmaxf(0.0f, fminf(melhorProgressoFase, 1.0f));
+    }
+
+    return faseFinalizadaComSucesso;
 }
 
 // Funcao principal do editor de fases.
 static bool CarregarFaseCustomizada(EditorFase *editor)
 {
-    if (CarregarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA))
-    {
-        return true;
-    }
-
-    return CarregarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA_LEGADO);
+    return CarregarFasePorNumero(editor, editor != NULL ? editor->faseEdicao : 1);
 }
 
 void LoopEditor(int larguraTela, int alturaTela)
@@ -444,25 +667,63 @@ void LoopEditor(int larguraTela, int alturaTela)
 
     if (CarregarFaseCustomizada(editor))
     {
-        printf("Fase carregada automaticamente de: %s\n", CAMINHO_FASE_CUSTOMIZADA);
+        printf("Fase %d carregada automaticamente de: %s\n", editor->faseEdicao, ObterCaminhoFase(editor->faseEdicao));
     }
 
     // Loop do editor: executa enquanto o jogador nao fecha a janela ou pressiona ESC.
     while (!WindowShouldClose() && !IsKeyPressed(KEY_ESCAPE))
     {
+        int faseSolicitada = 0;
+
+        if (IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_KP_1))
+        {
+            faseSolicitada = 1;
+        }
+        else if (IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_KP_2))
+        {
+            faseSolicitada = 2;
+        }
+        else if (IsKeyPressed(KEY_THREE) || IsKeyPressed(KEY_KP_3))
+        {
+            faseSolicitada = 3;
+        }
+
+        if (faseSolicitada > 0 && faseSolicitada != editor->faseEdicao)
+        {
+            int faseAnterior = editor->faseEdicao;
+
+            if (SalvarFaseAtual(editor))
+            {
+                printf("Fase %d salva em: %s\n", faseAnterior, ObterCaminhoFase(faseAnterior));
+            }
+            else
+            {
+                printf("Falha ao salvar a Fase %d em: %s\n", faseAnterior, ObterCaminhoFase(faseAnterior));
+            }
+
+            if (CarregarFasePorNumero(editor, faseSolicitada))
+            {
+                printf("Fase %d carregada de: %s\n", faseSolicitada, ObterCaminhoFase(faseSolicitada));
+            }
+            else
+            {
+                printf("Fase %d ainda vazia. Edite e salve em: %s\n", faseSolicitada, ObterCaminhoFase(faseSolicitada));
+            }
+        }
+
         // Atualiza a logica do editor (entrada do mouse).
         AtualizarEditor(editor, alturaTela);
 
         // Atalho para salvar.
         if (IsKeyPressed(KEY_S))
         {
-            if (SalvarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA))
+            if (SalvarFaseAtual(editor))
             {
-                printf("Fase salva em: %s\n", CAMINHO_FASE_CUSTOMIZADA);
+                printf("Fase %d salva em: %s\n", editor->faseEdicao, ObterCaminhoFase(editor->faseEdicao));
             }
             else
             {
-                printf("Falha ao salvar a fase em: %s\n", CAMINHO_FASE_CUSTOMIZADA);
+                printf("Falha ao salvar a Fase %d em: %s\n", editor->faseEdicao, ObterCaminhoFase(editor->faseEdicao));
             }
         }
 
@@ -471,11 +732,11 @@ void LoopEditor(int larguraTela, int alturaTela)
         {
             if (CarregarFaseCustomizada(editor))
             {
-                printf("Fase carregada de: %s\n", CAMINHO_FASE_CUSTOMIZADA);
+                printf("Fase %d carregada de: %s\n", editor->faseEdicao, ObterCaminhoFase(editor->faseEdicao));
             }
             else
             {
-                printf("Falha ao carregar a fase de: %s\n", CAMINHO_FASE_CUSTOMIZADA);
+                printf("Falha ao carregar a Fase %d de: %s\n", editor->faseEdicao, ObterCaminhoFase(editor->faseEdicao));
             }
         }
 
@@ -506,13 +767,13 @@ void LoopEditor(int larguraTela, int alturaTela)
         EndDrawing();
     }
 
-    if (SalvarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA))
+    if (SalvarFaseAtual(editor))
     {
-        printf("Fase salva automaticamente em: %s\n", CAMINHO_FASE_CUSTOMIZADA);
+        printf("Fase %d salva automaticamente em: %s\n", editor->faseEdicao, ObterCaminhoFase(editor->faseEdicao));
     }
     else
     {
-        printf("Falha ao salvar automaticamente a fase em: %s\n", CAMINHO_FASE_CUSTOMIZADA);
+        printf("Falha ao salvar automaticamente a Fase %d em: %s\n", editor->faseEdicao, ObterCaminhoFase(editor->faseEdicao));
     }
 
     DestruirEditorFase(editor);
@@ -562,6 +823,11 @@ int main(void)
     // Loop principal: menu, jogo e editor.
     ModoAplicacao modoAtual = MODO_MENU;
     int opcaoMenuSelecionada = 0;
+    int opcaoFaseSelecionada = 0;
+    int faseSelecionadaParaJogar = 1;
+    float progressoFases[TOTAL_FASES] = { 0 };
+
+    CarregarProgressosFases(progressoFases);
 
     while (!WindowShouldClose() && modoAtual != (ModoAplicacao)(-1))
     {
@@ -578,27 +844,56 @@ int main(void)
                 modoAtual = novoModo;
             }
         }
+        else if (modoAtual == MODO_SELECAO_FASE)
+        {
+            BeginDrawing();
+            DesenharMenuSelecaoFase(larguraTela, alturaTela, opcaoFaseSelecionada, progressoFases);
+            EndDrawing();
+
+            int resultadoSelecao = AtualizarMenuSelecaoFase(&opcaoFaseSelecionada);
+
+            if (resultadoSelecao > 0)
+            {
+                faseSelecionadaParaJogar = resultadoSelecao;
+                modoAtual = MODO_JOGO;
+            }
+            else if (resultadoSelecao < 0)
+            {
+                modoAtual = MODO_MENU;
+                opcaoMenuSelecionada = 0;
+            }
+        }
         else if (modoAtual == MODO_JOGO)
         {
-            // Carrega a fase customizada salva.
+            // Carrega e toca a fase escolhida no menu de fases.
             EditorFase faseCarregada = { 0 };
-            
-            if (CarregarFaseCustomizada(&faseCarregada) && faseCarregada.quantidadeEspinhos > 0)
+            int numeroFase = faseSelecionadaParaJogar;
+
+            if (CarregarFasePorNumero(&faseCarregada, numeroFase) && faseCarregada.quantidadeEspinhos > 0)
             {
-                // Toca a fase customizada.
-                LoopJogoComFase(larguraTela, alturaTela, estilo, alturaChao, chaoY,
-                                larguraJogador, alturaJogador, larguraFrameSprite, alturaFrameSprite,
-                                quantidadeFramesSprite, velocidadeJogador, gravidade, forcaPulo,
-                                larguraBlocoChao, inicioJogadorX,
-                                faseCarregada.espinhos, faseCarregada.quantidadeEspinhos);
+                EstiloCena estiloFase = ObterEstiloCenaFase(numeroFase);
+                bool concluiuFase = LoopJogoComFase(larguraTela, alturaTela, estiloFase, numeroFase, TOTAL_FASES,
+                                                    alturaChao, chaoY,
+                                                    larguraJogador, alturaJogador, larguraFrameSprite, alturaFrameSprite,
+                                                    quantidadeFramesSprite, velocidadeJogador, gravidade, forcaPulo,
+                                                    larguraBlocoChao, inicioJogadorX,
+                                                    faseCarregada.espinhos, faseCarregada.quantidadeEspinhos,
+                                                    &progressoFases[numeroFase - 1]);
+
+                if (concluiuFase)
+                {
+                    progressoFases[numeroFase - 1] = 1.0f;
+                }
+
+                SalvarProgressosFases(progressoFases);
             }
             else
             {
-                printf("Nenhuma fase customizada encontrada! Crie uma no editor.\n");
+                printf("Fase %d nao encontrada ou vazia. Crie essa fase no editor.\n", numeroFase);
             }
             
-            modoAtual = MODO_MENU;
-            opcaoMenuSelecionada = 0;
+            modoAtual = MODO_SELECAO_FASE;
+            opcaoFaseSelecionada = numeroFase - 1;
         }
         else if (modoAtual == MODO_EDITOR)
         {
