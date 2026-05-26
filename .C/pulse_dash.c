@@ -9,41 +9,311 @@
 
 #define CAMINHO_PROGRESSO_FASES "fases/progresso.dat"
 
+static int MedirTextoEspacado(const char *texto, int tamanhoFonte, int espacamento)
+{
+    int largura = 0;
+
+    for (int i = 0; texto[i] != '\0'; i++)
+    {
+        char caractere[2] = { texto[i], '\0' };
+        largura += MeasureText(caractere, tamanhoFonte);
+
+        if (texto[i + 1] != '\0')
+        {
+            largura += espacamento;
+        }
+    }
+
+    return largura;
+}
+
+static void DesenharTextoEspacado(const char *texto, int centroX, int y, int tamanhoFonte, int espacamento, Color cor)
+{
+    int x = centroX - MedirTextoEspacado(texto, tamanhoFonte, espacamento) / 2;
+
+    for (int i = 0; texto[i] != '\0'; i++)
+    {
+        char caractere[2] = { texto[i], '\0' };
+        DrawText(caractere, x, y, tamanhoFonte, cor);
+        x += MeasureText(caractere, tamanhoFonte) + espacamento;
+    }
+}
+
+static void DesenharCantosMenu(int larguraTela, int alturaTela, Color corLinha)
+{
+    int margem = 22;
+    int tamanho = 48;
+
+    DrawLine(margem, margem, margem + tamanho, margem, corLinha);
+    DrawLine(margem, margem, margem, margem + tamanho, corLinha);
+    DrawLine(larguraTela - margem - tamanho, margem, larguraTela - margem, margem, corLinha);
+    DrawLine(larguraTela - margem, margem, larguraTela - margem, margem + tamanho, corLinha);
+    DrawLine(margem, alturaTela - margem, margem + tamanho, alturaTela - margem, corLinha);
+    DrawLine(margem, alturaTela - margem - tamanho, margem, alturaTela - margem, corLinha);
+    DrawLine(larguraTela - margem - tamanho, alturaTela - margem, larguraTela - margem, alturaTela - margem, corLinha);
+    DrawLine(larguraTela - margem, alturaTela - margem - tamanho, larguraTela - margem, alturaTela - margem, corLinha);
+}
+
+static void DesenharLinhaHorizontalGlow(float x, float y, float largura, Color cor)
+{
+    DrawLineEx((Vector2){ x, y }, (Vector2){ x + largura, y }, 8.0f, Fade(cor, 0.05f));
+    DrawLineEx((Vector2){ x, y }, (Vector2){ x + largura, y }, 3.0f, Fade(cor, 0.14f));
+    DrawLineEx((Vector2){ x, y }, (Vector2){ x + largura, y }, 1.0f, Fade(cor, 0.48f));
+}
+
+static void DesenharPulsoTitulo(int centroX, int y, Color cor)
+{
+    int larguraLateral = 250;
+    int metadePulso = 18;
+
+    DesenharLinhaHorizontalGlow((float)(centroX - larguraLateral - 28), (float)y, (float)larguraLateral, cor);
+    DesenharLinhaHorizontalGlow((float)(centroX + 28), (float)y, (float)larguraLateral, cor);
+
+    DrawLineEx((Vector2){ centroX - 28.0f, y }, (Vector2){ centroX - 12.0f, y }, 1.5f, Fade(cor, 0.90f));
+    DrawLineEx((Vector2){ centroX - 12.0f, y }, (Vector2){ centroX - 6.0f, y - metadePulso }, 1.5f, Fade(cor, 0.90f));
+    DrawLineEx((Vector2){ centroX - 6.0f, y - metadePulso }, (Vector2){ centroX + 2.0f, y + metadePulso }, 1.5f, Fade(cor, 0.90f));
+    DrawLineEx((Vector2){ centroX + 2.0f, y + metadePulso }, (Vector2){ centroX + 9.0f, y - 8.0f }, 1.5f, Fade(cor, 0.90f));
+    DrawLineEx((Vector2){ centroX + 9.0f, y - 8.0f }, (Vector2){ centroX + 15.0f, y + 8.0f }, 1.5f, Fade(cor, 0.90f));
+    DrawLineEx((Vector2){ centroX + 15.0f, y + 8.0f }, (Vector2){ centroX + 24.0f, y }, 1.5f, Fade(cor, 0.90f));
+}
+
+static void DesenharIconeMenu(int indice, Vector2 centro, Color cor)
+{
+    if (indice == 0)
+    {
+        DrawTriangle(
+            (Vector2){ centro.x - 7.0f, centro.y - 12.0f },
+            (Vector2){ centro.x - 7.0f, centro.y + 12.0f },
+            (Vector2){ centro.x + 12.0f, centro.y },
+            cor
+        );
+    }
+    else if (indice == 1)
+    {
+        DrawRectangleLinesEx((Rectangle){ centro.x - 10.0f, centro.y - 11.0f, 20.0f, 22.0f }, 2.0f, cor);
+        DrawLineEx((Vector2){ centro.x - 5.0f, centro.y - 5.0f }, (Vector2){ centro.x + 6.0f, centro.y - 5.0f }, 2.0f, cor);
+        DrawLineEx((Vector2){ centro.x - 5.0f, centro.y + 1.0f }, (Vector2){ centro.x + 6.0f, centro.y + 1.0f }, 2.0f, cor);
+        DrawLineEx((Vector2){ centro.x - 5.0f, centro.y + 7.0f }, (Vector2){ centro.x + 6.0f, centro.y + 7.0f }, 2.0f, cor);
+    }
+    else
+    {
+        DrawRectangleLinesEx((Rectangle){ centro.x - 10.0f, centro.y - 10.0f, 15.0f, 20.0f }, 2.0f, cor);
+        DrawLineEx((Vector2){ centro.x - 2.0f, centro.y }, (Vector2){ centro.x + 13.0f, centro.y }, 2.0f, cor);
+        DrawLineEx((Vector2){ centro.x + 8.0f, centro.y - 6.0f }, (Vector2){ centro.x + 14.0f, centro.y }, 2.0f, cor);
+        DrawLineEx((Vector2){ centro.x + 8.0f, centro.y + 6.0f }, (Vector2){ centro.x + 14.0f, centro.y }, 2.0f, cor);
+    }
+}
+
+static void DesenharDetalhesFundoMenu(int larguraTela, int alturaTela, Color cor)
+{
+    Color corFraca = Fade(cor, 0.18f);
+
+    DrawLineEx((Vector2){ larguraTela * 0.07f, alturaTela * 0.28f }, (Vector2){ larguraTela * 0.16f, alturaTela * 0.28f }, 1.0f, corFraca);
+    DrawLineEx((Vector2){ larguraTela * 0.16f, alturaTela * 0.28f }, (Vector2){ larguraTela * 0.22f, alturaTela * 0.35f }, 1.0f, corFraca);
+    DrawLineEx((Vector2){ larguraTela * 0.22f, alturaTela * 0.35f }, (Vector2){ larguraTela * 0.46f, alturaTela * 0.35f }, 1.0f, Fade(cor, 0.10f));
+
+    DrawLineEx((Vector2){ larguraTela * 0.76f, alturaTela * 0.27f }, (Vector2){ larguraTela * 0.84f, alturaTela * 0.27f }, 1.0f, corFraca);
+    DrawLineEx((Vector2){ larguraTela * 0.84f, alturaTela * 0.27f }, (Vector2){ larguraTela * 0.87f, alturaTela * 0.20f }, 1.0f, corFraca);
+    DrawLineEx((Vector2){ larguraTela * 0.87f, alturaTela * 0.20f }, (Vector2){ larguraTela * 0.94f, alturaTela * 0.20f }, 1.0f, Fade(cor, 0.10f));
+
+    DrawLineEx((Vector2){ larguraTela * 0.31f, alturaTela * 0.88f }, (Vector2){ larguraTela * 0.93f, alturaTela * 0.88f }, 1.0f, Fade(cor, 0.16f));
+    DrawRectangle((int)(larguraTela * 0.26f), (int)(alturaTela * 0.77f), 8, 8, Fade(cor, 0.12f));
+    DrawRectangleLines((int)(larguraTela * 0.13f), (int)(alturaTela * 0.59f), 16, 16, Fade(cor, 0.13f));
+    DrawRectangle((int)(larguraTela * 0.88f), (int)(alturaTela * 0.70f), 5, 5, Fade(cor, 0.70f));
+    DrawRectangle((int)(larguraTela * 0.21f), (int)(alturaTela * 0.31f), 5, 5, Fade(cor, 0.40f));
+
+    for (int i = 0; i < 6; i++)
+    {
+        DrawRectangle(52, (int)(alturaTela * 0.44f) + i * 16, 4, 4, Fade(cor, 0.36f));
+        DrawRectangle(larguraTela - 56, (int)(alturaTela * 0.44f) + i * 16, 4, 4, Fade(cor, 0.36f));
+    }
+}
+
+static Color ObterCorMenuFase(int numeroFase)
+{
+    switch (numeroFase)
+    {
+        case 2: return (Color){ 32, 235, 92, 255 };
+        case 3: return (Color){ 255, 55, 72, 255 };
+        default: return (Color){ 22, 150, 255, 255 };
+    }
+}
+
+static void DesenharPreenchimentoPainelAngular(Rectangle area, float corte, Color cor)
+{
+    DrawRectangle((int)(area.x + corte), (int)area.y, (int)(area.width - corte * 2.0f), (int)area.height, cor);
+    DrawRectangle((int)area.x, (int)(area.y + corte), (int)area.width, (int)(area.height - corte * 2.0f), cor);
+
+    DrawTriangle(
+        (Vector2){ area.x + corte, area.y },
+        (Vector2){ area.x, area.y + corte },
+        (Vector2){ area.x + corte, area.y + corte },
+        cor
+    );
+    DrawTriangle(
+        (Vector2){ area.x + area.width - corte, area.y },
+        (Vector2){ area.x + area.width, area.y + corte },
+        (Vector2){ area.x + area.width - corte, area.y + corte },
+        cor
+    );
+    DrawTriangle(
+        (Vector2){ area.x, area.y + area.height - corte },
+        (Vector2){ area.x + corte, area.y + area.height },
+        (Vector2){ area.x + corte, area.y + area.height - corte },
+        cor
+    );
+    DrawTriangle(
+        (Vector2){ area.x + area.width, area.y + area.height - corte },
+        (Vector2){ area.x + area.width - corte, area.y + area.height },
+        (Vector2){ area.x + area.width - corte, area.y + area.height - corte },
+        cor
+    );
+}
+
+static void DesenharContornoPainelAngular(Rectangle area, float corte, float espessura, Color cor)
+{
+    Vector2 pontos[] = {
+        { area.x + corte, area.y },
+        { area.x + area.width - corte, area.y },
+        { area.x + area.width, area.y + corte },
+        { area.x + area.width, area.y + area.height - corte },
+        { area.x + area.width - corte, area.y + area.height },
+        { area.x + corte, area.y + area.height },
+        { area.x, area.y + area.height - corte },
+        { area.x, area.y + corte }
+    };
+
+    for (int i = 0; i < 8; i++)
+    {
+        DrawLineEx(pontos[i], pontos[(i + 1) % 8], espessura, cor);
+    }
+}
+
+static void DesenharPainelAngular(Rectangle area, Color cor, bool selecionado)
+{
+    float corte = 16.0f;
+
+    DesenharPreenchimentoPainelAngular(area, corte, Fade((Color){ 1, 8, 20, 255 }, selecionado ? 0.92f : 0.72f));
+    DesenharPreenchimentoPainelAngular(
+        (Rectangle){ area.x - 7.0f, area.y - 6.0f, area.width + 14.0f, area.height + 12.0f },
+        corte + 3.0f,
+        Fade(cor, selecionado ? 0.07f : 0.025f)
+    );
+    DesenharContornoPainelAngular(area, corte, selecionado ? 2.0f : 1.4f, Fade(cor, selecionado ? 0.98f : 0.72f));
+    DrawLineEx(
+        (Vector2){ area.x + area.width - 9.0f, area.y + 10.0f },
+        (Vector2){ area.x + area.width - 9.0f, area.y + area.height - 10.0f },
+        3.0f,
+        Fade(cor, selecionado ? 0.32f : 0.10f)
+    );
+}
+
+static void DesenharControleRodape(Rectangle caixa, const char *atalho, const char *linha1, const char *linha2, Color cor)
+{
+    DrawRectangleLinesEx(caixa, 1.4f, Fade(cor, 0.95f));
+    DesenharTextoEspacado(atalho, (int)(caixa.x + caixa.width * 0.5f), (int)(caixa.y + 10.0f), 12, 1, cor);
+    DrawText(linha1, (int)(caixa.x + caixa.width + 20.0f), (int)(caixa.y + 3.0f), 14, Fade((Color){ 190, 215, 240, 255 }, 0.92f));
+    DrawText(linha2, (int)(caixa.x + caixa.width + 20.0f), (int)(caixa.y + 22.0f), 12, Fade((Color){ 160, 190, 225, 255 }, 0.78f));
+}
+
 // Funcao que desenha o menu principal com opcoes de jogar ou editar.
 void DesenharMenu(int larguraTela, int alturaTela, EstiloCena estilo, int opcaoSelecionada)
 {
-    ClearBackground(estilo.corFundo);
-
-    // Desenha o titulo do jogo.
-    const char *titulo = "PULSE DASH";
-    int larguraTitulo = MeasureText(titulo, 64);
-    DrawText(titulo, larguraTela / 2 - larguraTitulo / 2, 100, 64, estilo.azulNeon);
-
-    // Desenha as opcoes do menu.
-    const char *opcoes[] = { "JOGAR", "EDITOR DE FASES", "SAIR" };
+    Color corFundo = (Color){ 1, 7, 18, 255 };
+    Color azulEletrico = (Color){ 22, 150, 255, 255 };
+    Color brancoFrio = (Color){ 228, 242, 255, 255 };
+    Color linhaFraca = Fade((Color){ 92, 153, 210, 255 }, 0.45f);
+    const char *opcoes[] = { "JOGAR", "EDITOR", "SAIR" };
     int quantidadeOpcoes = 3;
-    int espacoVertical = 120;
-    int posY = 300;
+    int centroX = larguraTela / 2;
+    int larguraBotao = 378;
+    int alturaBotao = 52;
+    int inicioY = (int)(alturaTela * 0.44f);
+
+    (void)estilo;
+
+    ClearBackground(corFundo);
+
+    DrawRectangleGradientV(0, 0, larguraTela, alturaTela, Fade((Color){ 2, 18, 42, 255 }, 0.36f), Fade(corFundo, 1.0f));
+    DrawRectangle(0, 0, larguraTela, alturaTela, Fade(BLACK, 0.18f));
+    DesenharDetalhesFundoMenu(larguraTela, alturaTela, azulEletrico);
+    DesenharCantosMenu(larguraTela, alturaTela, linhaFraca);
+
+    DrawText("v1.0.0", larguraTela - 112, 42, 18, azulEletrico);
+    DrawRectangle(larguraTela - 112, 76, 4, 4, azulEletrico);
+    DrawRectangle(larguraTela - 94, 76, 4, 4, azulEletrico);
+    DrawRectangle(larguraTela - 76, 76, 4, 4, Fade(azulEletrico, 0.12f));
+
+    DesenharTextoEspacado("PULSE DASH", centroX + 4, (int)(alturaTela * 0.20f), 56, 18, Fade(BLACK, 0.62f));
+    DesenharTextoEspacado("PULSE DASH", centroX, (int)(alturaTela * 0.195f), 56, 18, brancoFrio);
+    DesenharPulsoTitulo(centroX, (int)(alturaTela * 0.295f), azulEletrico);
 
     for (int i = 0; i < quantidadeOpcoes; i++)
     {
-        Color corTexto = (i == opcaoSelecionada) ? (Color){ 255, 255, 255, 255 } : estilo.azulNeon;
-        int larguraOpcao = MeasureText(opcoes[i], 32);
+        bool selecionada = (i == opcaoSelecionada);
+        int posY = inicioY + i * 70;
+        Rectangle areaOpcao = {
+            centroX - larguraBotao * 0.5f,
+            (float)posY,
+            (float)larguraBotao,
+            (float)alturaBotao
+        };
+        Color corTexto = selecionada ? brancoFrio : Fade(brancoFrio, 0.92f);
+        Color corIcone = selecionada ? azulEletrico : Fade(azulEletrico, 0.88f);
 
-        // Desenha um retangulo realcado para a opcao selecionada.
-        if (i == opcaoSelecionada)
+        if (selecionada)
         {
-            DrawRectangle(larguraTela / 2 - larguraOpcao / 2 - 20, posY - 10, 
-                          larguraOpcao + 40, 50, Fade((Color){ 52, 182, 255, 255 }, 0.3f));
+            DrawRectangleRounded(
+                (Rectangle){ areaOpcao.x - 10.0f, areaOpcao.y - 9.0f, areaOpcao.width + 20.0f, areaOpcao.height + 18.0f },
+                0.10f,
+                8,
+                Fade(azulEletrico, 0.06f)
+            );
+            DrawRectangleRounded(areaOpcao, 0.08f, 8, Fade((Color){ 3, 14, 33, 255 }, 0.86f));
+            DrawRectangleRoundedLines(areaOpcao, 0.08f, 8, Fade(azulEletrico, 0.98f));
+            DrawLineEx(
+                (Vector2){ areaOpcao.x + areaOpcao.width - 8.0f, areaOpcao.y + 2.0f },
+                (Vector2){ areaOpcao.x + areaOpcao.width - 8.0f, areaOpcao.y + areaOpcao.height - 2.0f },
+                3.0f,
+                Fade(azulEletrico, 0.38f)
+            );
+            DrawRectangleGradientH(
+                (int)(areaOpcao.x + areaOpcao.width - 68.0f),
+                (int)(areaOpcao.y + 1.0f),
+                68,
+                (int)(areaOpcao.height - 2.0f),
+                Fade(azulEletrico, 0.00f),
+                Fade(azulEletrico, 0.16f)
+            );
+        }
+        else
+        {
+            DrawLineEx(
+                (Vector2){ areaOpcao.x, areaOpcao.y + areaOpcao.height + 15.0f },
+                (Vector2){ areaOpcao.x + areaOpcao.width, areaOpcao.y + areaOpcao.height + 15.0f },
+                1.0f,
+                Fade((Color){ 125, 170, 220, 255 }, 0.22f)
+            );
         }
 
-        DrawText(opcoes[i], larguraTela / 2 - larguraOpcao / 2, posY, 32, corTexto);
-        posY += espacoVertical;
+        DesenharIconeMenu(i, (Vector2){ areaOpcao.x + 42.0f, areaOpcao.y + areaOpcao.height * 0.5f }, corIcone);
+        DesenharTextoEspacado(opcoes[i], centroX, posY + 18, 22, 7, Fade(BLACK, selecionada ? 0.60f : 0.28f));
+        DesenharTextoEspacado(opcoes[i], centroX, posY + 16, 22, 7, corTexto);
     }
 
-    // Instrucoes na parte inferior.
-    DrawText("[SETA CIMA/BAIXO] Selecionar | [ENTER] Confirmar", 
-             50, alturaTela - 50, 16, Fade(estilo.azulNeon, 0.7f));
+    DrawLineEx(
+        (Vector2){ larguraTela * 0.31f, alturaTela - 86.0f },
+        (Vector2){ larguraTela * 0.69f, alturaTela - 86.0f },
+        7.0f,
+        Fade(azulEletrico, 0.05f)
+    );
+    DesenharLinhaHorizontalGlow(larguraTela * 0.39f, alturaTela - 84.0f, larguraTela * 0.22f, azulEletrico);
+
+    DrawText("[ SETA CIMA / BAIXO ]", 68, alturaTela - 50, 14, azulEletrico);
+    DrawText("SELECIONAR", 230, alturaTela - 50, 14, Fade(brancoFrio, 0.92f));
+    DrawText("|", 332, alturaTela - 50, 14, Fade(brancoFrio, 0.68f));
+    DrawText("[ ENTER ]", 356, alturaTela - 50, 14, azulEletrico);
+    DrawText("CONFIRMAR", 438, alturaTela - 50, 14, Fade(brancoFrio, 0.92f));
 }
 
 // Funcao que implementa a logica do menu.
@@ -82,24 +352,42 @@ ModoAplicacao AtualizarMenu(int *opcaoSelecionada)
 
 static void DesenharMenuSelecaoFase(int larguraTela, int alturaTela, int opcaoSelecionada, const float progressoFases[TOTAL_FASES])
 {
-    EstiloCena estiloBase = ObterEstiloCena();
-
-    ClearBackground(estiloBase.corFundo);
-
-    const char *titulo = "SELECIONAR FASE";
-    int larguraTitulo = MeasureText(titulo, 52);
-    DrawText(titulo, larguraTela / 2 - larguraTitulo / 2, 80, 52, estiloBase.azulNeon);
+    Color corFundo = (Color){ 1, 7, 18, 255 };
+    Color azulEletrico = (Color){ 22, 150, 255, 255 };
+    Color brancoFrio = (Color){ 228, 242, 255, 255 };
+    Color linhaFraca = Fade((Color){ 92, 153, 210, 255 }, 0.45f);
+    int centroX = larguraTela / 2;
 
     int quantidadeOpcoes = TOTAL_FASES + 1;
-    int larguraCartao = 640;
-    int alturaCartao = 84;
-    int posY = 190;
+    int larguraCartao = 580;
+    int alturaCartao = 90;
+    int posY = 176;
+
+    ClearBackground(corFundo);
+
+    DrawRectangleGradientV(0, 0, larguraTela, alturaTela, Fade((Color){ 2, 18, 42, 255 }, 0.34f), Fade(corFundo, 1.0f));
+    DrawRectangle(0, 0, larguraTela, alturaTela, Fade(BLACK, 0.18f));
+    DesenharDetalhesFundoMenu(larguraTela, alturaTela, azulEletrico);
+    DesenharCantosMenu(larguraTela, alturaTela, linhaFraca);
+
+    DrawRectangle(60, 60, 4, 4, Fade(azulEletrico, 0.45f));
+    DrawRectangle(76, 60, 4, 4, Fade(azulEletrico, 0.75f));
+    DrawRectangle(92, 60, 4, 4, Fade(azulEletrico, 0.95f));
+    DrawRectangle(108, 60, 4, 4, Fade(azulEletrico, 0.75f));
+    DrawRectangle(larguraTela - 116, 56, 5, 5, azulEletrico);
+    DrawRectangle(larguraTela - 100, 56, 5, 5, azulEletrico);
+    DrawRectangle(larguraTela - 84, 56, 5, 5, Fade(azulEletrico, 0.75f));
+    DrawRectangle(larguraTela - 68, 56, 5, 5, Fade(azulEletrico, 0.55f));
+
+    DesenharTextoEspacado("SELECIONAR FASE", centroX + 3, 80, 38, 8, Fade(BLACK, 0.65f));
+    DesenharTextoEspacado("SELECIONAR FASE", centroX, 76, 38, 8, brancoFrio);
+    DesenharPulsoTitulo(centroX, 132, azulEletrico);
 
     for (int i = 0; i < quantidadeOpcoes; i++)
     {
         bool selecionada = (i == opcaoSelecionada);
         Rectangle areaOpcao = {
-            larguraTela * 0.5f - larguraCartao * 0.5f,
+            centroX - larguraCartao * 0.5f,
             (float)posY,
             (float)larguraCartao,
             (float)alturaCartao
@@ -108,44 +396,45 @@ static void DesenharMenuSelecaoFase(int larguraTela, int alturaTela, int opcaoSe
         if (i < TOTAL_FASES)
         {
             int numeroFase = i + 1;
-            EstiloCena estiloFase = ObterEstiloCenaFase(numeroFase);
+            Color corFase = ObterCorMenuFase(numeroFase);
             float progresso = fmaxf(0.0f, fminf(progressoFases[i], 1.0f));
             int percentual = (int)roundf(progresso * 100.0f);
+            float larguraBarra = areaOpcao.width - 72.0f;
+            float xBarra = areaOpcao.x + 36.0f;
+            float yBarra = areaOpcao.y + 64.0f;
 
-            DrawRectangleRounded(areaOpcao, 0.08f, 8, Fade(estiloFase.azulProfundo, selecionada ? 0.86f : 0.54f));
-            DrawRectangleRoundedLines(areaOpcao, 0.08f, 8, selecionada ? Fade(WHITE, 0.90f) : Fade(estiloFase.azulNeon, 0.62f));
-            DrawText(TextFormat("FASE %d", numeroFase), (int)areaOpcao.x + 24, posY + 18, 28, selecionada ? WHITE : estiloFase.azulNeon);
-            DrawText(TextFormat("PROGRESSO: %03d%%", percentual), (int)areaOpcao.x + 420, posY + 20, 22, Fade((Color){ 190, 240, 255, 255 }, 0.95f));
+            DesenharPainelAngular(areaOpcao, corFase, selecionada);
 
-            DrawRectangleRounded(
-                (Rectangle){ areaOpcao.x + 24.0f, areaOpcao.y + 58.0f, 592.0f, 10.0f },
-                0.45f,
-                8,
-                Fade(BLACK, 0.38f)
-            );
-            DrawRectangleRounded(
-                (Rectangle){ areaOpcao.x + 24.0f, areaOpcao.y + 58.0f, 592.0f * progresso, 10.0f },
-                0.45f,
-                8,
-                Fade(estiloFase.azulNeon, 0.92f)
-            );
+            DrawText(TextFormat("FASE %d", numeroFase), (int)areaOpcao.x + 36, posY + 28, 28, brancoFrio);
+            DrawText(TextFormat("%03d%%", percentual), (int)(areaOpcao.x + areaOpcao.width - 100.0f), posY + 27, 28, corFase);
+
+            DrawRectangleRounded((Rectangle){ xBarra, yBarra, larguraBarra, 7.0f }, 0.40f, 8, Fade(BLACK, 0.62f));
+            DrawRectangleRounded((Rectangle){ xBarra, yBarra, larguraBarra * progresso, 7.0f }, 0.40f, 8, Fade(corFase, 0.95f));
+            DrawLineEx((Vector2){ xBarra, yBarra + 3.0f }, (Vector2){ xBarra + larguraBarra * progresso, yBarra + 3.0f }, 7.0f, Fade(corFase, 0.18f));
         }
         else
         {
-            DrawRectangleRounded(areaOpcao, 0.08f, 8, Fade(estiloBase.azulProfundo, selecionada ? 0.82f : 0.44f));
-            DrawRectangleRoundedLines(areaOpcao, 0.08f, 8, selecionada ? Fade(WHITE, 0.90f) : Fade(estiloBase.azulNeon, 0.55f));
+            Rectangle areaVoltar = {
+                areaOpcao.x,
+                areaOpcao.y - 2.0f,
+                areaOpcao.width,
+                70.0f
+            };
 
-            const char *textoVoltar = "VOLTAR";
-            int larguraTexto = MeasureText(textoVoltar, 28);
-            DrawText(textoVoltar, larguraTela / 2 - larguraTexto / 2, posY + 28, 28, selecionada ? WHITE : estiloBase.azulNeon);
+            DesenharPainelAngular(areaVoltar, azulEletrico, selecionada);
+            DrawLineEx((Vector2){ areaVoltar.x + 42.0f, areaVoltar.y + 35.0f }, (Vector2){ areaVoltar.x + 54.0f, areaVoltar.y + 23.0f }, 2.4f, azulEletrico);
+            DrawLineEx((Vector2){ areaVoltar.x + 42.0f, areaVoltar.y + 35.0f }, (Vector2){ areaVoltar.x + 54.0f, areaVoltar.y + 47.0f }, 2.4f, azulEletrico);
+            DesenharTextoEspacado("VOLTAR", centroX, (int)areaVoltar.y + 24, 22, 8, brancoFrio);
         }
 
-        posY += alturaCartao + 18;
+        posY += (i < TOTAL_FASES) ? 116 : 92;
     }
 
-    const char *instrucoes = "[SETA CIMA/BAIXO] Selecionar | [ENTER] Confirmar | [ESC] Voltar";
-    int larguraInstrucoes = MeasureText(instrucoes, 16);
-    DrawText(instrucoes, larguraTela / 2 - larguraInstrucoes / 2, alturaTela - 48, 16, Fade(estiloBase.azulNeon, 0.75f));
+    DesenharControleRodape((Rectangle){ larguraTela * 0.28f, alturaTela - 62.0f, 22.0f, 28.0f }, "^v", "SETA CIMA / BAIXO", "SELECIONAR", azulEletrico);
+    DrawText("|", (int)(larguraTela * 0.44f), alturaTela - 52, 18, Fade(brancoFrio, 0.38f));
+    DesenharControleRodape((Rectangle){ larguraTela * 0.48f, alturaTela - 62.0f, 48.0f, 28.0f }, "<-->", "ENTER", "CONFIRMAR", azulEletrico);
+    DrawText("|", (int)(larguraTela * 0.61f), alturaTela - 52, 18, Fade(brancoFrio, 0.38f));
+    DesenharControleRodape((Rectangle){ larguraTela * 0.65f, alturaTela - 62.0f, 38.0f, 28.0f }, "ESC", "VOLTAR", "", azulEletrico);
 }
 
 static int AtualizarMenuSelecaoFase(int *opcaoSelecionada)
@@ -816,6 +1105,7 @@ int main(void)
 
     // Inicializa a janela principal do projeto.
     InitWindow(larguraTela, alturaTela, "Pulse Dash");
+    SetExitKey(0);
 
     // Mantem a atualizacao e o desenho em 60 quadros por segundo.
     SetTargetFPS(60);

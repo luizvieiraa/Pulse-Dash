@@ -9,7 +9,7 @@ RAYLIB_LIBS := $(shell $(PKG_CONFIG) --libs raylib 2>/dev/null)
 
 CFLAGS ?= -std=c99 -Wall -Wextra -Wpedantic
 CPPFLAGS ?= -I.H
-LDLIBS ?= $(if $(RAYLIB_LIBS),$(RAYLIB_LIBS),-lraylib -lGL -lm -lpthread -ldl -lrt -lX11)
+LDLIBS ?= $(if $(RAYLIB_LIBS),$(RAYLIB_LIBS) -lm,-lraylib -lGL -lm -lpthread -ldl -lrt -lX11)
 
 .PHONY: all run clean
 
