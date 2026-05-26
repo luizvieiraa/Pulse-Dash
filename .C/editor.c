@@ -8,9 +8,6 @@
 // Configuracoes visuais do editor.
 #define EDITOR_ALTURA_CHAO 550.0f
 #define EDITOR_RAIO_SELECAO 25.0f
-#define EDITOR_COR_ESPINHO_NORMAL (Color){ 52, 182, 255, 255 }
-#define EDITOR_COR_ESPINHO_HOVER (Color){ 100, 220, 255, 255 }
-#define EDITOR_COR_PREVIEW (Color){ 52, 182, 255, 100 }
 #define EDITOR_TAMANHO_MAX_CAMINHO 512
 
 static void CopiarTextoSeguro(char *destino, size_t tamanhoDestino, const char *origem)
@@ -279,7 +276,6 @@ EditorFase *CriarEditorFase(void)
     editor->mostrandoPreview = false;
     editor->faseEdicao = 1;
     editor->cameraX = 0.0f;
-    editor->testando = false;
     strcpy(editor->nomeFase, "Fase 1");
     
     return editor;
@@ -382,10 +378,8 @@ int EncontrarEspinhoProximo(EditorFase *editor, Vector2 posicao, float distancia
     return indiceProximo;
 }
 
-void AtualizarEditor(EditorFase *editor, int alturaTela)
+void AtualizarEditor(EditorFase *editor)
 {
-    (void)alturaTela; // Parametro nao usado
-    
     if (editor == NULL)
     {
         return;
@@ -433,10 +427,8 @@ void AtualizarEditor(EditorFase *editor, int alturaTela)
                                  mousePosXMundo <= (float)GetScreenWidth() + editor->cameraX);
 }
 
-void DesenharEditor(EditorFase *editor, int larguraTela, int alturaTela)
+void DesenharEditor(EditorFase *editor, int larguraTela)
 {
-    (void)alturaTela; // Parametro nao usado
-    
     if (editor == NULL)
     {
         return;
@@ -691,10 +683,8 @@ bool VerificarColisaoComEspinhos(Rectangle limitesJogador, DadosEspinho *espinho
 }
 
 // Desenha os espinhos da fase editada.
-static void DesenharEspinhosFase(DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY, Camera2D camera, EstiloCena estilo)
+static void DesenharEspinhosFase(DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY, EstiloCena estilo)
 {
-    (void)camera;
-    
     if (espinhos == NULL || quantidadeEspinhos == 0)
     {
         return;
@@ -726,20 +716,17 @@ static void DesenharEspinhosFase(DadosEspinho *espinhos, int quantidadeEspinhos,
 }
 
 // Funcao para testar a fase criada no editor.
-bool TestarFaseEditor(EditorFase *editor, int larguraTela, int alturaTela)
+void TestarFaseEditor(EditorFase *editor, int larguraTela, int alturaTela)
 {
     if (editor == NULL || editor->quantidadeEspinhos == 0)
     {
-        return true;
+        return;
     }
 
     const float alturaChao = 140.0f;
     const float chaoY = alturaTela - alturaChao;
     const float larguraJogador = 46.0f;
     const float alturaJogador = 46.0f;
-    const int larguraFrameSprite = 96;
-    const int alturaFrameSprite = 128;
-    const int quantidadeFramesSprite = 4;
     const float velocidadeJogador = 600.0f;
     const float gravidade = 1800.0f;
     const float forcaPulo = -700.0f;
@@ -760,16 +747,11 @@ bool TestarFaseEditor(EditorFase *editor, int larguraTela, int alturaTela)
     float temporizadorConclusaoFase = 0.0f;
     float progressoFase = 0.0f;
     float tempoAnimacaoPorta = 0.0f;
-    bool continuarEditando = true;
-
     Jogador jogador = CriarJogador(
         inicioJogadorX,
         chaoY,
         larguraJogador,
-        alturaJogador,
-        larguraFrameSprite,
-        alturaFrameSprite,
-        quantidadeFramesSprite
+        alturaJogador
     );
 
     Camera2D camera = { 0 };
@@ -860,9 +842,9 @@ bool TestarFaseEditor(EditorFase *editor, int larguraTela, int alturaTela)
 
         DesenharFundoEstiloLogo(camera.target.x - camera.offset.x, alturaTela, chaoY, estilo);
         DesenharChaoMundo(camera.target.x, chaoY, alturaChao, larguraBlocoChao, estilo);
-        DesenharEspinhosFase(editor->espinhos, editor->quantidadeEspinhos, chaoY, camera, estilo);
+        DesenharEspinhosFase(editor->espinhos, editor->quantidadeEspinhos, chaoY, estilo);
         DesenharParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA);
-        DesenharJogador(&jogador, larguraFrameSprite, alturaFrameSprite);
+        DesenharJogador(&jogador);
         DesenharPortaSaida(portaSaida, estilo, tempoAnimacaoPorta, portaLiberada || faseConcluida);
 
         EndMode2D();
@@ -913,6 +895,4 @@ bool TestarFaseEditor(EditorFase *editor, int larguraTela, int alturaTela)
         EndDrawing();
     }
 
-    DestruirJogador(&jogador);
-    return continuarEditando;
 }

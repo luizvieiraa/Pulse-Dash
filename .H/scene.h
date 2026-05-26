@@ -25,9 +25,6 @@ void DesenharFundoEstiloLogo(float cameraX, int alturaTela, float chaoY, EstiloC
 // Desenha o chao, as marcas de energia e os detalhes do piso.
 void DesenharChaoMundo(float alvoCameraX, float chaoY, float alturaChao, float larguraBlocoChao, EstiloCena estilo);
 
-// Verifica se o personagem encostou em algum espinho real da fase.
-bool VerificarColisaoJogadorEspinho(Rectangle limitesJogador, float chaoY);
-
 // Retorna a borda direita do ultimo espinho da fase para servir de referencia de progresso.
 float ObterLimiteDireitoUltimoEspinho(const DadosEspinho *espinhos, int quantidadeEspinhos);
 

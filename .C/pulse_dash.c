@@ -4,7 +4,6 @@
 #include "../.H/scene.h"
 #include "../.H/editor.h"
 #include <math.h>
-#include <stdlib.h>
 #include <stdio.h>
 
 #define CAMINHO_PROGRESSO_FASES "fases/progresso.dat"
@@ -217,7 +216,7 @@ static void DesenharControleRodape(Rectangle caixa, const char *atalho, const ch
 }
 
 // Funcao que desenha o menu principal com opcoes de jogar ou editar.
-void DesenharMenu(int larguraTela, int alturaTela, EstiloCena estilo, int opcaoSelecionada)
+void DesenharMenu(int larguraTela, int alturaTela, int opcaoSelecionada)
 {
     Color corFundo = (Color){ 1, 7, 18, 255 };
     Color azulEletrico = (Color){ 22, 150, 255, 255 };
@@ -229,8 +228,6 @@ void DesenharMenu(int larguraTela, int alturaTela, EstiloCena estilo, int opcaoS
     int larguraBotao = 378;
     int alturaBotao = 52;
     int inicioY = (int)(alturaTela * 0.44f);
-
-    (void)estilo;
 
     ClearBackground(corFundo);
 
@@ -692,8 +689,7 @@ static void DesenharMensagemConclusaoFase(int larguraTela, int alturaTela, Estil
 // Versao do LoopJogo que suporta fases customizadas.
 bool LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, int numeroFase, int totalFases,
                      float alturaChao, 
-                     float chaoY, float larguraJogador, float alturaJogador, int larguraFrameSprite, 
-                     int alturaFrameSprite, int quantidadeFramesSprite, float velocidadeJogador, 
+                     float chaoY, float larguraJogador, float alturaJogador, float velocidadeJogador,
                      float gravidade, float forcaPulo, float larguraBlocoChao, float inicioJogadorX,
                      DadosEspinho *espinhosCustomizados, int quantidadeEspinhosCustomizados,
                      float *progressoMaximoFase)
@@ -723,15 +719,12 @@ bool LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, int num
     float progressoFase = 0.0f;
     float tempoAnimacaoPorta = 0.0f;
 
-    // Cria o personagem principal com sprite, fisica e animacao.
+    // Cria o personagem principal com fisica e animacao.
     Jogador jogador = CriarJogador(
         inicioJogadorX,
         chaoY,
         larguraJogador,
-        alturaJogador,
-        larguraFrameSprite,
-        alturaFrameSprite,
-        quantidadeFramesSprite
+        alturaJogador
     );
 
     // Configura uma camera 2D para acompanhar o personagem horizontalmente.
@@ -897,8 +890,8 @@ bool LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, int num
         // Desenha as particulas antes do personagem para a energia ficar parcialmente atras dele.
         DesenharParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA);
 
-        // Desenha o personagem com o frame correto da animacao.
-        DesenharJogador(&jogador, larguraFrameSprite, alturaFrameSprite);
+        // Desenha o personagem.
+        DesenharJogador(&jogador);
 
         // Desenha a porta depois do personagem para reforcar a entrada visual no fim da fase.
         DesenharPortaSaida(portaSaida, estilo, tempoAnimacaoPorta, portaLiberada || faseConcluida);
@@ -927,9 +920,6 @@ bool LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, int num
         // Finaliza o desenho do frame atual.
         EndDrawing();
     }
-
-    // Libera os recursos do personagem antes de encerrar o jogo.
-    DestruirJogador(&jogador);
 
     if (progressoMaximoFase != NULL)
     {
@@ -1001,7 +991,7 @@ void LoopEditor(int larguraTela, int alturaTela)
         }
 
         // Atualiza a logica do editor (entrada do mouse).
-        AtualizarEditor(editor, alturaTela);
+        AtualizarEditor(editor);
 
         // Atalho para salvar.
         if (IsKeyPressed(KEY_S))
@@ -1052,7 +1042,7 @@ void LoopEditor(int larguraTela, int alturaTela)
 
         // Desenha o editor.
         BeginDrawing();
-        DesenharEditor(editor, larguraTela, alturaTela);
+        DesenharEditor(editor, larguraTela);
         EndDrawing();
     }
 
@@ -1082,11 +1072,6 @@ int main(void)
     const float larguraJogador = 46.0f;
     const float alturaJogador = 46.0f;
 
-    // Define o tamanho de cada frame do sprite e quantos frames existem.
-    const int larguraFrameSprite = 96;
-    const int alturaFrameSprite = 128;
-    const int quantidadeFramesSprite = 4;
-
     // Define a velocidade horizontal do boneco em pixels por segundo.
     const float velocidadeJogador = 600.0f;
 
@@ -1099,9 +1084,6 @@ int main(void)
 
     // Define a posicao inicial usada quando o jogador precisa voltar apos uma colisao.
     const float inicioJogadorX = 120.0f;
-
-    // Carrega a paleta principal do cenario para unificar o visual do jogo.
-    EstiloCena estilo = ObterEstiloCena();
 
     // Inicializa a janela principal do projeto.
     InitWindow(larguraTela, alturaTela, "Pulse Dash");
@@ -1124,7 +1106,7 @@ int main(void)
         if (modoAtual == MODO_MENU)
         {
             BeginDrawing();
-            DesenharMenu(larguraTela, alturaTela, estilo, opcaoMenuSelecionada);
+            DesenharMenu(larguraTela, alturaTela, opcaoMenuSelecionada);
             EndDrawing();
 
             ModoAplicacao novoModo = AtualizarMenu(&opcaoMenuSelecionada);
@@ -1164,8 +1146,7 @@ int main(void)
                 EstiloCena estiloFase = ObterEstiloCenaFase(numeroFase);
                 bool concluiuFase = LoopJogoComFase(larguraTela, alturaTela, estiloFase, numeroFase, TOTAL_FASES,
                                                     alturaChao, chaoY,
-                                                    larguraJogador, alturaJogador, larguraFrameSprite, alturaFrameSprite,
-                                                    quantidadeFramesSprite, velocidadeJogador, gravidade, forcaPulo,
+                                                    larguraJogador, alturaJogador, velocidadeJogador, gravidade, forcaPulo,
                                                     larguraBlocoChao, inicioJogadorX,
                                                     faseCarregada.espinhos, faseCarregada.quantidadeEspinhos,
                                                     &progressoFases[numeroFase - 1]);

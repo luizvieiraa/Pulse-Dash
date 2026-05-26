@@ -1,5 +1,4 @@
 #include "../.H/scene.h"
-#include <stdbool.h>
 #include <math.h>
 #include <stddef.h>
 
@@ -137,16 +136,6 @@ void DesenharChaoMundo(float alvoCameraX, float chaoY, float alturaChao, float l
         4.0f,
         Fade(estilo.azulNeon, 0.85f)
     );
-}
-
-bool VerificarColisaoJogadorEspinho(Rectangle limitesJogador, float chaoY)
-{
-    (void)limitesJogador;
-    (void)chaoY;
-
-    // Os espinhos agora vem do editor de fases.
-    // Esta funcao nao e mais usada no fluxo principal.
-    return false;
 }
 
 float ObterLimiteDireitoUltimoEspinho(const DadosEspinho *espinhos, int quantidadeEspinhos)

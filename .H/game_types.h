@@ -47,8 +47,7 @@ typedef struct
     bool mostrandoPreview;
     int faseEdicao;
     char nomeFase[64];
-    float cameraX;  // Posicao horizontal da camera para scroll
-    bool testando;  // Se esta testando a fase
+    float cameraX;
 } EditorFase;
 
 #endif

@@ -11,24 +11,16 @@ typedef struct Jogador
     float velocidadeY;
     bool estaNoChao;
     bool estavaNoChao;
-    float tempoAnimacaoCorrida;
     float rotacaoGraus;
-    RenderTexture2D folhaSprites;
 } Jogador;
 
-// Cria o personagem com fisica basica e gera o spritesheet usado na animacao.
+// Cria o personagem com fisica basica.
 Jogador CriarJogador(
     float inicioX,
     float chaoY,
     float larguraJogador,
-    float alturaJogador,
-    int larguraFrameSprite,
-    int alturaFrameSprite,
-    int quantidadeFramesSprite
+    float alturaJogador
 );
-
-// Libera os recursos graficos associados ao personagem.
-void DestruirJogador(Jogador *jogador);
 
 // Atualiza o movimento automatico, o pulo e o estado geral do personagem.
 void AtualizarJogador(Jogador *jogador, float tempoFrame, float velocidadeJogador, float gravidade, float forcaPulo, float chaoY);
@@ -42,10 +34,7 @@ void AtualizarJogadorEntrandoNaPorta(Jogador *jogador, Rectangle portaSaida, flo
 // Informa se o personagem acabou de tocar o chao neste frame.
 bool JogadorAcabouDePousar(const Jogador *jogador);
 
-// Retorna o frame atual do sprite de acordo com o estado da animacao.
-int ObterIndiceFrameSpriteJogador(const Jogador *jogador);
-
-// Desenha o frame atual do personagem no mundo.
-void DesenharJogador(const Jogador *jogador, int larguraFrameSprite, int alturaFrameSprite);
+// Desenha o personagem no mundo.
+void DesenharJogador(const Jogador *jogador);
 
 #endif
