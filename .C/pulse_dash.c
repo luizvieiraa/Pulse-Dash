@@ -7,6 +7,8 @@
 #include <stdio.h>
 
 #define CAMINHO_PROGRESSO_FASES "fases/progresso.dat"
+#define MENU_MARGIN 22
+#define MENU_CANTOS_TAMANHO 48
 
 static int MedirTextoEspacado(const char *texto, int tamanhoFonte, int espacamento)
 {
@@ -340,7 +342,8 @@ ModoAplicacao AtualizarMenu(int *opcaoSelecionada)
         }
         else
         {
-            return -1; // Sair
+            // Opcao SAIR selecionada - sinalizar com valor especial
+            return -2; // Valor especial para sair
         }
     }
 
@@ -349,6 +352,12 @@ ModoAplicacao AtualizarMenu(int *opcaoSelecionada)
 
 static void DesenharMenuSelecaoFase(int larguraTela, int alturaTela, int opcaoSelecionada, const float progressoFases[TOTAL_FASES])
 {
+    if (progressoFases == NULL)
+    {
+        fprintf(stderr, "Erro: progressoFases eh NULL em DesenharMenuSelecaoFase\n");
+        return;
+    }
+
     Color corFundo = (Color){ 1, 7, 18, 255 };
     Color azulEletrico = (Color){ 22, 150, 255, 255 };
     Color brancoFrio = (Color){ 228, 242, 255, 255 };
@@ -450,20 +459,20 @@ static int AtualizarMenuSelecaoFase(int *opcaoSelecionada)
 
     if (IsKeyPressed(KEY_ESCAPE))
     {
-        return -1;
+        return -1; // -1 significa voltar ao menu
     }
 
     if (IsKeyPressed(KEY_ENTER))
     {
         if (*opcaoSelecionada < TOTAL_FASES)
         {
-            return *opcaoSelecionada + 1;
+            return *opcaoSelecionada + 1; // Retorna numero da fase (1-3)
         }
 
-        return -1;
+        return -1; // Botao VOLTAR selecionado - voltar ao menu
     }
 
-    return 0;
+    return 0; // 0 = nenhuma acao, continua neste modo
 }
 
 // Desenha o menu de pausa durante o jogo.
@@ -612,6 +621,11 @@ static void CarregarProgressosFases(float progressoFases[TOTAL_FASES])
 {
     ZerarProgressosFases(progressoFases);
 
+    if (progressoFases == NULL)
+    {
+        return;
+    }
+
     FILE *arquivo = fopen(CAMINHO_PROGRESSO_FASES, "rb");
 
     if (arquivo == NULL)
@@ -619,28 +633,53 @@ static void CarregarProgressosFases(float progressoFases[TOTAL_FASES])
         return;
     }
 
-    fread(progressoFases, sizeof(float), TOTAL_FASES, arquivo);
+    size_t lidos = fread(progressoFases, sizeof(float), TOTAL_FASES, arquivo);
     fclose(arquivo);
+
+    if (lidos != TOTAL_FASES)
+    {
+        fprintf(stderr, "Aviso: Lidos %zu de %d elementos de progresso\n", lidos, TOTAL_FASES);
+    }
 
     for (int i = 0; i < TOTAL_FASES; i++)
     {
-        progressoFases[i] = fmaxf(0.0f, fminf(progressoFases[i], 1.0f));
+        if (!isnan(progressoFases[i]) && !isinf(progressoFases[i]))
+        {
+            progressoFases[i] = fmaxf(0.0f, fminf(progressoFases[i], 1.0f));
+        }
+        else
+        {
+            progressoFases[i] = 0.0f;
+        }
     }
 }
 
 static bool SalvarProgressosFases(const float progressoFases[TOTAL_FASES])
 {
+    if (progressoFases == NULL)
+    {
+        fprintf(stderr, "Erro: progressoFases eh NULL em SalvarProgressosFases\n");
+        return false;
+    }
+
     FILE *arquivo = fopen(CAMINHO_PROGRESSO_FASES, "wb");
 
     if (arquivo == NULL)
     {
+        fprintf(stderr, "Erro: Nao foi possivel abrir arquivo de progresso para escrita\n");
         return false;
     }
 
-    bool salvou = fwrite(progressoFases, sizeof(float), TOTAL_FASES, arquivo) == TOTAL_FASES;
+    size_t escritos = fwrite(progressoFases, sizeof(float), TOTAL_FASES, arquivo);
     fclose(arquivo);
 
-    return salvou;
+    if (escritos != TOTAL_FASES)
+    {
+        fprintf(stderr, "Erro: Escritos %zu de %d elementos de progresso\n", escritos, TOTAL_FASES);
+        return false;
+    }
+
+    return true;
 }
 
 static void DesenharEspinhosCustomizados(const DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY, EstiloCena estilo)
@@ -694,6 +733,12 @@ bool LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, int num
                      DadosEspinho *espinhosCustomizados, int quantidadeEspinhosCustomizados,
                      float *progressoMaximoFase)
 {
+    if (espinhosCustomizados == NULL && quantidadeEspinhosCustomizados > 0)
+    {
+        fprintf(stderr, "Erro: espinhosCustomizados eh NULL mas quantidadeEspinhosCustomizados = %d\n", quantidadeEspinhosCustomizados);
+        return false;
+    }
+
     Rectangle portaSaida = CriarPortaSaidaFase(espinhosCustomizados, quantidadeEspinhosCustomizados, chaoY);
     float limiteDireitoUltimoEspinho = ObterLimiteDireitoUltimoEspinho(espinhosCustomizados, quantidadeEspinhosCustomizados);
 
@@ -1098,10 +1143,11 @@ int main(void)
     int opcaoFaseSelecionada = 0;
     int faseSelecionadaParaJogar = 1;
     float progressoFases[TOTAL_FASES] = { 0 };
+    bool aplicacaoRodando = true;
 
     CarregarProgressosFases(progressoFases);
 
-    while (!WindowShouldClose() && modoAtual != (ModoAplicacao)(-1))
+    while (!WindowShouldClose() && aplicacaoRodando)
     {
         if (modoAtual == MODO_MENU)
         {
@@ -1111,7 +1157,12 @@ int main(void)
 
             ModoAplicacao novoModo = AtualizarMenu(&opcaoMenuSelecionada);
             
-            if (novoModo != MODO_MENU)
+            // Valor especial para sair: -2 é tratado como sair
+            if ((int)novoModo == -2)
+            {
+                aplicacaoRodando = false;
+            }
+            else if (novoModo != MODO_MENU)
             {
                 modoAtual = novoModo;
             }
@@ -1129,11 +1180,12 @@ int main(void)
                 faseSelecionadaParaJogar = resultadoSelecao;
                 modoAtual = MODO_JOGO;
             }
-            else if (resultadoSelecao < 0)
+            else if (resultadoSelecao < 0) // -1 = voltar ao menu
             {
                 modoAtual = MODO_MENU;
                 opcaoMenuSelecionada = 0;
             }
+            // Se resultadoSelecao == 0, continua neste modo
         }
         else if (modoAtual == MODO_JOGO)
         {
@@ -1172,6 +1224,12 @@ int main(void)
             
             modoAtual = MODO_MENU;
             opcaoMenuSelecionada = 1;
+        }
+        else
+        {
+            // Modo invalido - sair do loop
+            fprintf(stderr, "Erro: Modo invalido detectado\n");
+            aplicacaoRodando = false;
         }
     }
 
