@@ -35,7 +35,8 @@ typedef enum
     MODO_MENU,
     MODO_SELECAO_FASE,
     MODO_JOGO,
-    MODO_EDITOR
+    MODO_EDITOR,
+    MODO_SAIR
 } ModoAplicacao;
 
 // Guarda o estado do editor de fases.

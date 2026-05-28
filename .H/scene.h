@@ -20,7 +20,7 @@ EstiloCena ObterEstiloCena(void);
 EstiloCena ObterEstiloCenaFase(int numeroFase);
 
 // Desenha o fundo com blocos e pequenos detalhes luminosos inspirados na logo do jogo.
-void DesenharFundoEstiloLogo(float cameraX, int alturaTela, float chaoY, EstiloCena estilo);
+void DesenharFundoEstiloLogo(float cameraX, float chaoY, EstiloCena estilo);
 
 // Desenha o chao, as marcas de energia e os detalhes do piso.
 void DesenharChaoMundo(float alvoCameraX, float chaoY, float alturaChao, float larguraBlocoChao, EstiloCena estilo);
@@ -39,6 +39,9 @@ bool VerificarJogadorEntrouNaPorta(Rectangle limitesJogador, Rectangle portaSaid
 
 // Desenha a porta de saida da fase com brilho neon.
 void DesenharPortaSaida(Rectangle portaSaida, EstiloCena estilo, float tempoAnimacao, bool portaLiberada);
+
+// Desenha os espinhos de uma fase com o estilo neon.
+void DesenharEspinhos(const DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY, EstiloCena estilo);
 
 // Desenha a interface fixa na tela, incluindo moldura e textos.
 void DesenharHudCena(int larguraTela, int alturaTela, EstiloCena estilo, int contadorColisoes,

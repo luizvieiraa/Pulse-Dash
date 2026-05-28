@@ -42,17 +42,14 @@ static void DesenharTextoEspacado(const char *texto, int centroX, int y, int tam
 
 static void DesenharCantosMenu(int larguraTela, int alturaTela, Color corLinha)
 {
-    int margem = 22;
-    int tamanho = 48;
-
-    DrawLine(margem, margem, margem + tamanho, margem, corLinha);
-    DrawLine(margem, margem, margem, margem + tamanho, corLinha);
-    DrawLine(larguraTela - margem - tamanho, margem, larguraTela - margem, margem, corLinha);
-    DrawLine(larguraTela - margem, margem, larguraTela - margem, margem + tamanho, corLinha);
-    DrawLine(margem, alturaTela - margem, margem + tamanho, alturaTela - margem, corLinha);
-    DrawLine(margem, alturaTela - margem - tamanho, margem, alturaTela - margem, corLinha);
-    DrawLine(larguraTela - margem - tamanho, alturaTela - margem, larguraTela - margem, alturaTela - margem, corLinha);
-    DrawLine(larguraTela - margem, alturaTela - margem - tamanho, larguraTela - margem, alturaTela - margem, corLinha);
+    DrawLine(MENU_MARGIN, MENU_MARGIN, MENU_MARGIN + MENU_CANTOS_TAMANHO, MENU_MARGIN, corLinha);
+    DrawLine(MENU_MARGIN, MENU_MARGIN, MENU_MARGIN, MENU_MARGIN + MENU_CANTOS_TAMANHO, corLinha);
+    DrawLine(larguraTela - MENU_MARGIN - MENU_CANTOS_TAMANHO, MENU_MARGIN, larguraTela - MENU_MARGIN, MENU_MARGIN, corLinha);
+    DrawLine(larguraTela - MENU_MARGIN, MENU_MARGIN, larguraTela - MENU_MARGIN, MENU_MARGIN + MENU_CANTOS_TAMANHO, corLinha);
+    DrawLine(MENU_MARGIN, alturaTela - MENU_MARGIN, MENU_MARGIN + MENU_CANTOS_TAMANHO, alturaTela - MENU_MARGIN, corLinha);
+    DrawLine(MENU_MARGIN, alturaTela - MENU_MARGIN - MENU_CANTOS_TAMANHO, MENU_MARGIN, alturaTela - MENU_MARGIN, corLinha);
+    DrawLine(larguraTela - MENU_MARGIN - MENU_CANTOS_TAMANHO, alturaTela - MENU_MARGIN, larguraTela - MENU_MARGIN, alturaTela - MENU_MARGIN, corLinha);
+    DrawLine(larguraTela - MENU_MARGIN, alturaTela - MENU_MARGIN - MENU_CANTOS_TAMANHO, larguraTela - MENU_MARGIN, alturaTela - MENU_MARGIN, corLinha);
 }
 
 static void DesenharLinhaHorizontalGlow(float x, float y, float largura, Color cor)
@@ -342,8 +339,7 @@ ModoAplicacao AtualizarMenu(int *opcaoSelecionada)
         }
         else
         {
-            // Opcao SAIR selecionada - sinalizar com valor especial
-            return -2; // Valor especial para sair
+            return MODO_SAIR;
         }
     }
 
@@ -589,12 +585,6 @@ static bool CarregarFasePorNumero(EditorFase *editor, int numeroFase)
         return true;
     }
 
-    if (numeroFase == 1 && CarregarFaseEditor(editor, CAMINHO_FASE_CUSTOMIZADA_LEGADO))
-    {
-        editor->faseEdicao = numeroFase;
-        return true;
-    }
-
     PrepararEditorParaFase(editor, numeroFase);
     return false;
 }
@@ -619,12 +609,12 @@ static void ZerarProgressosFases(float progressoFases[TOTAL_FASES])
 
 static void CarregarProgressosFases(float progressoFases[TOTAL_FASES])
 {
-    ZerarProgressosFases(progressoFases);
-
     if (progressoFases == NULL)
     {
         return;
     }
+
+    ZerarProgressosFases(progressoFases);
 
     FILE *arquivo = fopen(CAMINHO_PROGRESSO_FASES, "rb");
 
@@ -680,30 +670,6 @@ static bool SalvarProgressosFases(const float progressoFases[TOTAL_FASES])
     }
 
     return true;
-}
-
-static void DesenharEspinhosCustomizados(const DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY, EstiloCena estilo)
-{
-    if (espinhos == NULL || quantidadeEspinhos <= 0)
-    {
-        return;
-    }
-
-    for (int i = 0; i < quantidadeEspinhos; i++)
-    {
-        float largura = 34.0f;
-        float altura = 42.0f + espinhos[i].variacaoAltura;
-        float baseX = espinhos[i].posicaoX;
-
-        Vector2 pontoEsquerdo = { baseX, chaoY };
-        Vector2 pontoTopo = { baseX + largura * 0.5f, chaoY - altura };
-        Vector2 pontoDireito = { baseX + largura, chaoY };
-
-        DrawTriangle(pontoEsquerdo, pontoTopo, pontoDireito, Fade(estilo.azulNeon, 0.18f));
-        DrawTriangleLines(pontoEsquerdo, pontoTopo, pontoDireito, Fade(estilo.azulNeon, 0.92f));
-        DrawLineEx(pontoEsquerdo, pontoTopo, 2.0f, Fade((Color){ 190, 240, 255, 255 }, 0.90f));
-        DrawLineEx(pontoTopo, pontoDireito, 2.0f, Fade((Color){ 190, 240, 255, 255 }, 0.90f));
-    }
 }
 
 static void DesenharMensagemConclusaoFase(int larguraTela, int alturaTela, EstiloCena estilo, int numeroFase)
@@ -924,13 +890,13 @@ bool LoopJogoComFase(int larguraTela, int alturaTela, EstiloCena estilo, int num
         BeginMode2D(camera);
 
         // Desenha os blocos geometricos e detalhes luminosos do fundo.
-        DesenharFundoEstiloLogo(camera.target.x - camera.offset.x, alturaTela, chaoY, estilo);
+        DesenharFundoEstiloLogo(camera.target.x - camera.offset.x, chaoY, estilo);
 
         // Desenha o piso completo da fase com blocos, linhas e espinhos decorativos.
         DesenharChaoMundo(camera.target.x, chaoY, alturaChao, larguraBlocoChao, estilo);
 
         // Desenha os espinhos customizados se existirem.
-        DesenharEspinhosCustomizados(espinhosCustomizados, quantidadeEspinhosCustomizados, chaoY, estilo);
+        DesenharEspinhos(espinhosCustomizados, quantidadeEspinhosCustomizados, chaoY, estilo);
 
         // Desenha as particulas antes do personagem para a energia ficar parcialmente atras dele.
         DesenharParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA);
@@ -1156,9 +1122,8 @@ int main(void)
             EndDrawing();
 
             ModoAplicacao novoModo = AtualizarMenu(&opcaoMenuSelecionada);
-            
-            // Valor especial para sair: -2 é tratado como sair
-            if ((int)novoModo == -2)
+
+            if (novoModo == MODO_SAIR)
             {
                 aplicacaoRodando = false;
             }

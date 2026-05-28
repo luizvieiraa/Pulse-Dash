@@ -9,7 +9,6 @@
 #define CAMINHO_FASE_2 "fases/fase_2.dat"
 #define CAMINHO_FASE_3 "fases/fase_3.dat"
 #define CAMINHO_FASE_CUSTOMIZADA "fases/fase_customizada.dat"
-#define CAMINHO_FASE_CUSTOMIZADA_LEGADO "fases/fase_customizada.txt"
 
 // Inicializa um novo editor de fases vazio.
 EditorFase *CriarEditorFase(void);

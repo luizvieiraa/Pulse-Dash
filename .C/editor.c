@@ -682,39 +682,6 @@ bool VerificarColisaoComEspinhos(Rectangle limitesJogador, DadosEspinho *espinho
     return false;
 }
 
-// Desenha os espinhos da fase editada.
-static void DesenharEspinhosFase(DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY, EstiloCena estilo)
-{
-    if (espinhos == NULL || quantidadeEspinhos == 0)
-    {
-        return;
-    }
-
-    for (int i = 0; i < quantidadeEspinhos; i++)
-    {
-        float largura = 34.0f;
-        float altura = 42.0f + espinhos[i].variacaoAltura;
-        float baseX = espinhos[i].posicaoX;
-
-        Vector2 pontoEsquerdo;
-        pontoEsquerdo.x = baseX;
-        pontoEsquerdo.y = chaoY;
-
-        Vector2 pontoTopo;
-        pontoTopo.x = baseX + largura * 0.5f;
-        pontoTopo.y = chaoY - altura;
-
-        Vector2 pontoDireito;
-        pontoDireito.x = baseX + largura;
-        pontoDireito.y = chaoY;
-
-        DrawTriangle(pontoEsquerdo, pontoTopo, pontoDireito, Fade(estilo.azulNeon, 0.18f));
-        DrawTriangleLines(pontoEsquerdo, pontoTopo, pontoDireito, Fade(estilo.azulNeon, 0.92f));
-        DrawLineEx(pontoEsquerdo, pontoTopo, 2.0f, Fade((Color){ 190, 240, 255, 255 }, 0.90f));
-        DrawLineEx(pontoTopo, pontoDireito, 2.0f, Fade((Color){ 190, 240, 255, 255 }, 0.90f));
-    }
-}
-
 // Funcao para testar a fase criada no editor.
 void TestarFaseEditor(EditorFase *editor, int larguraTela, int alturaTela)
 {
@@ -840,9 +807,9 @@ void TestarFaseEditor(EditorFase *editor, int larguraTela, int alturaTela)
 
         BeginMode2D(camera);
 
-        DesenharFundoEstiloLogo(camera.target.x - camera.offset.x, alturaTela, chaoY, estilo);
+        DesenharFundoEstiloLogo(camera.target.x - camera.offset.x, chaoY, estilo);
         DesenharChaoMundo(camera.target.x, chaoY, alturaChao, larguraBlocoChao, estilo);
-        DesenharEspinhosFase(editor->espinhos, editor->quantidadeEspinhos, chaoY, estilo);
+        DesenharEspinhos(editor->espinhos, editor->quantidadeEspinhos, chaoY, estilo);
         DesenharParticulasPoeira(particulasPoeira, MAX_PARTICULAS_POEIRA);
         DesenharJogador(&jogador);
         DesenharPortaSaida(portaSaida, estilo, tempoAnimacaoPorta, portaLiberada || faseConcluida);

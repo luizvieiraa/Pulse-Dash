@@ -48,58 +48,31 @@ EstiloCena ObterEstiloCenaFase(int numeroFase)
     return estilo;
 }
 
-void DesenharFundoEstiloLogo(float cameraX, int alturaTela, float chaoY, EstiloCena estilo)
+void DesenharFundoEstiloLogo(float cameraX, float chaoY, EstiloCena estilo)
 {
-    // Define as cores principais do ambiente escuro com brilho neon.
-    Color corPainel = Fade(estilo.azulProfundo, 0.55f);
-    Color corLinha = Fade(estilo.azulNeon, 0.42f);
-    Color corBrilho = Fade(estilo.azulNeon, 0.72f);
+    Color corPainel = estilo.azulProfundo;
+    Color corBrilho = estilo.azulNeon;
 
-    // Desenha varios paineis retangulares ao fundo para criar profundidade geometrica.
+    // Paineis retangulares ao fundo com opacidade bem baixa para nao poluir.
     for (int indiceBloco = -8; indiceBloco < 42; indiceBloco++)
     {
         float blocoX = floorf(cameraX / 160.0f) * 160.0f + indiceBloco * 160.0f;
         float alturaBloco = 110.0f + (float)((indiceBloco % 4 + 4) % 4) * 60.0f;
         float topoBloco = chaoY - alturaBloco - 40.0f - (float)(((indiceBloco + 1) % 3 + 3) % 3) * 20.0f;
 
-        DrawRectangle((int)blocoX, (int)topoBloco, 100, (int)alturaBloco, Fade(corPainel, 0.55f));
-        DrawRectangleLinesEx((Rectangle){ blocoX, topoBloco, 100.0f, alturaBloco }, 2.0f, Fade(corLinha, 0.45f));
+        DrawRectangle((int)blocoX, (int)topoBloco, 100, (int)alturaBloco, Fade(corPainel, 0.18f));
+        DrawRectangleLinesEx((Rectangle){ blocoX, topoBloco, 100.0f, alturaBloco }, 1.0f, Fade(corBrilho, 0.10f));
     }
 
-    // Desenha pequenos quadrados brilhantes flutuando para lembrar os pixels da logo.
+    // Pequenos pontos flutuantes muito sutis para dar textura ao fundo.
     for (int indicePixel = -10; indicePixel < 70; indicePixel++)
     {
         float pixelX = floorf(cameraX / 90.0f) * 90.0f + indicePixel * 90.0f;
         float pixelY = 100.0f + (float)(((indicePixel * 37) % 260 + 260) % 260);
-        float tamanhoPixel = (float)(8 + (((indicePixel * 13) % 10 + 10) % 10));
-        float alfa = 0.20f + (float)((indicePixel % 5 + 5) % 5) * 0.10f;
+        int tamanhoPixel = 3 + (((indicePixel * 13) % 3 + 3) % 3);
+        float alfa = 0.06f + (float)((indicePixel % 3 + 3) % 3) * 0.04f;
 
-        DrawRectangle((int)pixelX, (int)pixelY, (int)tamanhoPixel, (int)tamanhoPixel, Fade(corBrilho, alfa));
-    }
-
-    // Desenha correntes verticais estilizadas parecidas com a arte da logo.
-    for (int indiceCorrente = -2; indiceCorrente < 10; indiceCorrente++)
-    {
-        float correnteX = floorf(cameraX / 420.0f) * 420.0f + 120.0f + indiceCorrente * 420.0f;
-
-        for (int indiceElo = 0; indiceElo < 6; indiceElo++)
-        {
-            float eloY = 30.0f + indiceElo * 34.0f;
-            DrawRectangleRounded((Rectangle){ correnteX, eloY, 16.0f, 26.0f }, 0.45f, 6, Fade(corLinha, 0.55f));
-            DrawRectangleRounded((Rectangle){ correnteX + 3.0f, eloY + 3.0f, 10.0f, 20.0f }, 0.45f, 6, Fade(BLACK, 0.45f));
-        }
-    }
-
-    // Desenha uma linha de energia no meio da tela para reforcar a identidade da logo.
-    for (int indiceOnda = -8; indiceOnda < 34; indiceOnda++)
-    {
-        float segmentoX = floorf(cameraX / 180.0f) * 180.0f + indiceOnda * 180.0f;
-        float ondaY = alturaTela * 0.64f;
-
-        DrawLineEx((Vector2){ segmentoX, ondaY }, (Vector2){ segmentoX + 35.0f, ondaY }, 3.0f, Fade(corBrilho, 0.65f));
-        DrawLineEx((Vector2){ segmentoX + 35.0f, ondaY }, (Vector2){ segmentoX + 55.0f, ondaY - 42.0f }, 3.0f, Fade(corBrilho, 0.65f));
-        DrawLineEx((Vector2){ segmentoX + 55.0f, ondaY - 42.0f }, (Vector2){ segmentoX + 78.0f, ondaY + 38.0f }, 3.0f, Fade(corBrilho, 0.65f));
-        DrawLineEx((Vector2){ segmentoX + 78.0f, ondaY + 38.0f }, (Vector2){ segmentoX + 105.0f, ondaY }, 3.0f, Fade(corBrilho, 0.65f));
+        DrawRectangle((int)pixelX, (int)pixelY, tamanhoPixel, tamanhoPixel, Fade(corBrilho, alfa));
     }
 }
 
@@ -239,6 +212,30 @@ void DesenharPortaSaida(Rectangle portaSaida, EstiloCena estilo, float tempoAnim
     );
 }
 
+void DesenharEspinhos(const DadosEspinho *espinhos, int quantidadeEspinhos, float chaoY, EstiloCena estilo)
+{
+    if (espinhos == NULL || quantidadeEspinhos <= 0)
+    {
+        return;
+    }
+
+    for (int i = 0; i < quantidadeEspinhos; i++)
+    {
+        float largura = 34.0f;
+        float altura = 42.0f + espinhos[i].variacaoAltura;
+        float baseX = espinhos[i].posicaoX;
+
+        Vector2 pontoEsquerdo = { baseX, chaoY };
+        Vector2 pontoTopo = { baseX + largura * 0.5f, chaoY - altura };
+        Vector2 pontoDireito = { baseX + largura, chaoY };
+
+        DrawTriangle(pontoEsquerdo, pontoTopo, pontoDireito, Fade(estilo.azulNeon, 0.18f));
+        DrawTriangleLines(pontoEsquerdo, pontoTopo, pontoDireito, Fade(estilo.azulNeon, 0.92f));
+        DrawLineEx(pontoEsquerdo, pontoTopo, 2.0f, Fade((Color){ 190, 240, 255, 255 }, 0.90f));
+        DrawLineEx(pontoTopo, pontoDireito, 2.0f, Fade((Color){ 190, 240, 255, 255 }, 0.90f));
+    }
+}
+
 void DesenharHudCena(int larguraTela, int alturaTela, EstiloCena estilo, int contadorColisoes,
                      float temporizadorFlashDano, float progressoFase, bool portaLiberada,
                      bool faseConcluida)
@@ -260,13 +257,9 @@ void DesenharHudCena(int larguraTela, int alturaTela, EstiloCena estilo, int con
     DrawText("ESPACO / SETA CIMA / CLIQUE ESQUERDO = PULAR", 34, 34, 24, Fade(BLACK, 0.50f));
     DrawText("ESPACO / SETA CIMA / CLIQUE ESQUERDO = PULAR", 30, 30, 24, estilo.azulNeon);
 
-    // Identifica o estilo visual atual de forma discreta.
-    DrawText("ESTILO VISUAL DA LOGO + RUNNER MINIMALISTA", 34, 66, 20, Fade(BLACK, 0.50f));
-    DrawText("ESTILO VISUAL DA LOGO + RUNNER MINIMALISTA", 30, 62, 20, Fade((Color){ 190, 240, 255, 255 }, 0.95f));
-
     // Exibe a contagem de colisoes para dar feedback de progresso durante os testes.
-    DrawText(TextFormat("COLISOES: %02i", contadorColisoes), 34, 98, 20, Fade(BLACK, 0.50f));
-    DrawText(TextFormat("COLISOES: %02i", contadorColisoes), 30, 94, 20, Fade(estilo.azulNeon, 0.95f));
+    DrawText(TextFormat("COLISOES: %02i", contadorColisoes), 34, 66, 20, Fade(BLACK, 0.50f));
+    DrawText(TextFormat("COLISOES: %02i", contadorColisoes), 30, 62, 20, Fade(estilo.azulNeon, 0.95f));
 
     // Mostra o andamento da fase no canto superior direito.
     DrawText("PROGRESSO DA FASE", larguraTela - 334, 34, 18, Fade(BLACK, 0.50f));
