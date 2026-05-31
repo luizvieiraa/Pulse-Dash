@@ -1101,7 +1101,7 @@ int main(void)
     SetExitKey(0);
 
     // Mantem a atualizacao e o desenho em 60 quadros por segundo.
-    SetTargetFPS(60);
+    SetTargetFPS(120);
 
     // Loop principal: menu, jogo e editor.
     ModoAplicacao modoAtual = MODO_MENU;
