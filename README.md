@@ -56,6 +56,11 @@ gcc -std=c99 -Wall -Wextra -Wpedantic ^
 
 ## 🎮 Como Jogar
 
+### 🎥 Screen Cast
+Veja uma demonstração do jogo neste vídeo:
+
+[Screen cast do jogo](https://youtu.be/urO16CvhEtk)
+
 ### Menu Principal
 Ao iniciar o jogo, você verá o menu principal com as seguintes opções:
 - **▶ Jogar** - Começar uma nova partida
